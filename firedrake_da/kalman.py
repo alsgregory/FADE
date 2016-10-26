@@ -24,7 +24,7 @@ def Kalman_update(ensemble, observation_coords, observations, sigma, fs_to_proje
 
         :arg observations: tuple / list of observation state values
         :type observations: tuple / list
-        
+
         :arg sigma: variance of independent observation error
         :type sigma: float
 
@@ -67,11 +67,11 @@ def Kalman_update(ensemble, observation_coords, observations, sigma, fs_to_proje
     d = np.zeros(np.shape(in_ensemble_dat))
     for i in range(n):
         d[:, i] = D[i].dat.data
-    
+
     """ kalman gain and update """
     # make R matrix on observation space - independent observation error!
     r = np.identity(len(d[:, 0])) * sigma
-    
+
     # kalman gain - NB: because all components of K are in observation space, operator H becomes id
     K = np.dot(cov, np.linalg.inv(cov + r))
     X = in_ensemble_dat + np.dot(K, d)

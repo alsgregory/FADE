@@ -6,8 +6,6 @@ from __future__ import absolute_import
 
 from firedrake import *
 
-import numpy as np
-
 from firedrake_da.utils import *
 
 
@@ -49,9 +47,11 @@ class Observations(object):
 
     def difference(self, func, p=2):
 
-        """ finds p-norm difference between a function and observations for each cell in a DG0 fs
+        """ finds p-norm difference between a function and observations
+        for each cell in a DG0 fs
 
-            :arg func: the :class:`Function` to find the difference between observations and it
+            :arg func: the :class:`Function` to find the difference between
+            observations and it
             :type func: :class:`Function`
 
             :arg p: degree of p-norm
@@ -68,9 +68,12 @@ class Observations(object):
         in_func = Function(self.cell_fs)
         in_func.project(func)
 
-        # next use kernel to iterate over adding up cell averages for observation
+        # next use kernel to iterate over adding up cell
+        # averages for observation
         for i in range(self.ny):
-            cell_diff.dat.data[self.nodes[i].astype(int)] += (self.observations[i] - in_func.dat.data[self.nodes[i].astype(int)]) ** p
+            ind = self.nodes[i].astype(int)
+            cell_diff.dat.data[ind] += (self.observations[i] -
+                                        in_func.dat.data[ind]) ** p
 
         # project back to (depends on what post processing one wants surely!)
         out_func.project(cell_diff)

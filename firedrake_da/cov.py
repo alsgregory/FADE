@@ -10,7 +10,7 @@ import numpy as np
 
 
 def Covariance(ensemble, fs_to_project_to="default"):
-    
+
     """ finds the covariance matrix, for basis coeffs of a certain projecting :class:`FunctionSpace`,
         from an ensemble of :class:`Function`s
 
@@ -52,5 +52,5 @@ def Covariance(ensemble, fs_to_project_to="default"):
         raise ValueError('only scalar functionals currently supported')
 
     est_cov = np.cov(in_ensemble_dat)
-    
+
     return est_cov, in_ensemble_dat

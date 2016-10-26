@@ -10,36 +10,36 @@ import numpy as np
 
 
 def test_covariance_zero_var():
-    
+
     mesh = UnitIntervalMesh(1)
-    
+
     v = FunctionSpace(mesh, 'DG', 0)
-    
+
     ensemble = []
     n = 10
     for i in range(n):
         f = Function(v)
         ensemble.append(f)
-    
+
     # zero variance
     cov, in_ensemble_dat = Covariance(ensemble)
-    
+
     assert np.max(np.abs(cov)) == 0
 
 
 def test_covariance_projection():
-    
+
     mesh = UnitIntervalMesh(1)
-    
+
     v = FunctionSpace(mesh, 'DG', 1)
     fs_to_project_to = FunctionSpace(mesh, 'DG', 2)
-    
+
     ensemble = []
     n = 10
     for i in range(n):
         f = Function(v)
         ensemble.append(f)
-    
+
     # different observation spaces
     options = [v, fs_to_project_to]
     degs = [1, 2]

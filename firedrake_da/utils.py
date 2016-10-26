@@ -4,8 +4,6 @@ from __future__ import division
 
 from __future__ import absolute_import
 
-from firedrake import *
-
 import numpy as np
 
 
