@@ -20,4 +20,4 @@ for i in range(n):
     ensemble.append(f)
 
 cov = Covariance(ensemble, fs)
-X = Kalman_update(ensemble, coords, obs, .1, fs)
+X = Kalman_update(ensemble, coords, obs, sigma, fs)
