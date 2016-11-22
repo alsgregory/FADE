@@ -5,3 +5,4 @@ from firedrake_da.observations import *  # noqa
 from firedrake_da.cov import *  # noqa
 from firedrake_da.kalman import *  # noqa
 from firedrake_da.emd import *  # noqa
+from firedrake_da.localisation import *  # noqa
