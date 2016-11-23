@@ -19,7 +19,6 @@ mesh_hierarchy = MeshHierarchy(mesh, 1)
 mesh = mesh_hierarchy[0]
 
 V = FunctionSpace(mesh, 'DG', 0)
-fs = FunctionSpace(mesh, 'DG', 0)
 
 # the coordinates of observation (only cell)
 coords = tuple([np.array([0.5])])
@@ -35,7 +34,7 @@ ns = 4 * (2 ** np.linspace(0, 5, 6))
 rmse = np.zeros(len(ns))
 
 
-# define the kalman update step
+# define the ensemble transform update step
 def ensemble_transform_step(V, n, coords, obs, sigma):
 
     # generate ensemble
