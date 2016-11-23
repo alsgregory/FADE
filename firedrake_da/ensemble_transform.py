@@ -21,7 +21,7 @@ def ensemble_transform_update(ensemble, weights, r_loc_func):
         :arg ensemble: list of :class:`Function`s in the ensemble
         :type ensemble: tuple / list
 
-        :arg weights: list of :class:`Function`s in the ensemble
+        :arg weights: list of :class:`Function`s representing the importance weights
         :type weights: tuple / list
 
         :arg r_loc_func: radius of localisation function
