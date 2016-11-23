@@ -22,7 +22,7 @@ V = FunctionSpace(mesh, 'DG', 0)
 fs = FunctionSpace(mesh, 'DG', 0)
 
 # the coordinates of observation (only cell)
-coords = tuple([np.array([0.5, 0.5])])
+coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
 
 # denote the true mean of the posterior
