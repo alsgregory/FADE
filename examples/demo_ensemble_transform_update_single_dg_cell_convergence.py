@@ -1,4 +1,4 @@
-""" demo for the posterior convergence of a single kalman update step on a single cell """
+""" demo for the posterior convergence of a single ensemble transform update step on a single cell """
 
 from __future__ import division
 
@@ -11,7 +11,12 @@ import numpy as np
 import matplotlib.pyplot as plot
 
 
+# create the mesh hierarchy (needed for coarsening localisation)
 mesh = UnitIntervalMesh(1)
+mesh_hierarchy = MeshHierarchy(mesh, 1)
+
+# set used mesh to the bottom mesh
+mesh = mesh_hierarchy[0]
 
 V = FunctionSpace(mesh, 'DG', 0)
 fs = FunctionSpace(mesh, 'DG', 0)
@@ -31,7 +36,7 @@ rmse = np.zeros(len(ns))
 
 
 # define the kalman update step
-def kalman_step(V, fs, n, coords, obs, sigma):
+def ensemble_transform_step(V, n, coords, obs, sigma):
 
     # generate ensemble
     ensemble = []
@@ -40,13 +45,15 @@ def kalman_step(V, fs, n, coords, obs, sigma):
         ensemble.append(f)
 
     # generate posterior
-    X = Kalman_update(ensemble, coords, obs, sigma, fs)
+    r_loc = 0
+    r_loc_func = 0
+    weights = weight_update(ensemble, coords, obs, sigma, r_loc)
+    X = ensemble_transform_update(ensemble, weights, r_loc_func)
 
     # generate mean
     M = 0
     for i in range(n):
         M += (1 / float(n)) * X[i].dat.data[0]
-
     return M
 
 
@@ -60,7 +67,7 @@ for i in range(len(ns)):
 
     for j in range(niter):
 
-        k = kalman_step(V, fs, int(ns[i]), coords, obs, sigma)
+        k = ensemble_transform_step(V, int(ns[i]), coords, obs, sigma)
 
         temp_mse[j] = np.square(k - TrueMean)
 
