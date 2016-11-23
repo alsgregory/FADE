@@ -6,8 +6,6 @@ from __future__ import absolute_import
 
 from firedrake import *
 
-from firedrake.mg.utils import get_level
-
 import numpy as np
 
 from firedrake_da.localisation import *
