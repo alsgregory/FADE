@@ -80,10 +80,11 @@ def ensemble_transform_update(ensemble, weights, r_loc_func):
 
         # transform
         P = np.reshape(particles[j, :], ((1, n)))
-        # if 1D use cheap algorithm
-        if nc == 1:
-            ens = np.reshape(onedtransform(w[j, :],
-                             np.ones(n) * (1.0 / n), particles[j, :]), ((1, n)))
+        # if 1D or r_loc_func = 0 use cheap algorithm
+        if nc == 1 or r_loc_func == 0:
+            a = np.argsort(particles[j, :])
+            ens = np.reshape(onedtransform(w[j, a.astype(int)],
+                             np.ones(n) * (1.0 / n), particles[j, a.astype(int)]), ((1, n)))
         else:
             ens = transform(P, P, w[j, :], np.ones(n) * (1.0 / n), Cost)
 
