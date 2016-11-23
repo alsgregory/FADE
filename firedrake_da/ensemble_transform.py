@@ -31,12 +31,6 @@ def ensemble_transform_update(ensemble, weights, r_loc_func):
 
     if len(ensemble) < 1:
         raise ValueError('ensemble cannot be indexed')
-    mesh = ensemble[0].function_space().mesh()
-
-    # check that part of a hierarchy - so that one can coarsen localise
-    hierarchy, lvl = get_level(mesh)
-    if lvl is None:
-        raise ValueError('mesh for ensemble members needs to be part of hierarchy for coarsening loc')
 
     # function space
     fs = ensemble[0].function_space()
