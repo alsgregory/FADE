@@ -8,7 +8,7 @@ from firedrake import *
 
 import numpy as np
 
-from firedrake_da.cov import *
+from firedrake_da.kalman.cov import *
 from firedrake_da.observations import *
 
 

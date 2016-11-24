@@ -5,6 +5,7 @@ from __future__ import absolute_import
 from firedrake import *
 
 from firedrake_da import *
+from firedrake_da.kalman import *
 
 import numpy as np
 
