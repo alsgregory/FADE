@@ -9,10 +9,11 @@ from firedrake import *
 import numpy as np
 
 from firedrake_da.localisation import *
+from firedrake_da.localisation_functions import *
 from firedrake_da.emd import *
 
 
-def ensemble_transform_update(ensemble, weights, r_loc_func):
+def ensemble_transform_update(ensemble, weights, localisation_functions):
 
     """ Computes the ensemble transform update (with localisation) in the etpf of a weighted ensemble
 
@@ -24,6 +25,9 @@ def ensemble_transform_update(ensemble, weights, r_loc_func):
 
         :arg r_loc_func: radius of localisation function
         :type r_loc_func: int
+
+        :arg localisation_functions: The :class:`LocalisationFunctions` for the given function space
+        :type localisation_functions: :class:`LocalisationFunctions`
 
     """
 
@@ -49,11 +53,13 @@ def ensemble_transform_update(ensemble, weights, r_loc_func):
         if np.abs(c - 1) > 1e-3:
             raise ValueError('Weights dont add up to 1')
 
-    # design localisation functions (NB: make this in script at the start / class for it, rather than
-    # doing it at each assimilation step!)
-    C = []
-    for i in range(nc):
-        C.append(Localisation(fs, r_loc_func, i))
+    # check if the localisation functions are of that type
+    if not isinstance(localisation_functions, LocalisationFunctions):
+        raise ValueError('localisation_functions needs to be the object LocalisationFunctions. ' +
+                         'See help(LocalisationFunctions) for details')
+
+    # check that the function spaces of :class:`LocalisationFunctions` are the same
+    assert localisation_functions.function_space == fs
 
     # preallocate new ensemble
     new_ensemble = []
@@ -76,12 +82,12 @@ def ensemble_transform_update(ensemble, weights, r_loc_func):
         Cost = np.zeros((n, n))
         for i in range(nc):
             p = np.reshape(particles[i, :], ((1, n)))
-            Cost += C[j].dat.data[i] * CostMatrix(p, p)
+            Cost += localisation_functions[j].dat.data[i] * CostMatrix(p, p)
 
         # transform
         P = np.reshape(particles[j, :], ((1, n)))
         # if 1D or r_loc_func = 0 use cheap algorithm
-        if nc == 1 or r_loc_func == 0:
+        if nc == 1 or localisation_functions.r_loc_func == 0:
             a = np.argsort(particles[j, :])
             ens = np.reshape(onedtransform(w[j, a.astype(int)],
                              np.ones(n) * (1.0 / n), particles[j, a.astype(int)]), ((1, n)))

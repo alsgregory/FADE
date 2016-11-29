@@ -33,7 +33,8 @@ def test_ensemble_transform_mean_preserving():
     weights = weight_update(ensemble, coord, obs, sigma, r_loc)
 
     # compute ensemble transform - should be 1.0's
-    new_ensemble = ensemble_transform_update(ensemble, weights, r_loc_func)
+    lf = LocalisationFunctions(fs, r_loc_func)
+    new_ensemble = ensemble_transform_update(ensemble, weights, lf)
 
     assert np.max(new_ensemble[0].dat.data[:] - 1.0) < 1e-5
     assert np.max(new_ensemble[1].dat.data[:] - 1.0) < 1e-5

@@ -10,6 +10,7 @@ from firedrake import *
 from firedrake.mg.utils import get_level
 from firedrake_da import *
 from firedrake_da.localisation import *
+from firedrake_da.localisation_functions import *
 from firedrake_da.emd import *
 from firedrake_da.ml import *
 
@@ -21,7 +22,7 @@ the indicies of the finer subcells and sort them according to the sorted coarse 
 of each cheap coupling """
 
 
-def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc_func):
+def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1, lf_2):
 
     """ performs a seamless coupling ensemble transform update (with localisation) from a coupling
         between two weighted ensembles (coarse and fine) into two evenly weighted ensembles.
@@ -41,8 +42,11 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
                         ensemble
         :type weights_2: tuple / list
 
-        :arg r_loc_func: radius of localisation function
-        :type r_loc_func: int
+        :arg lf_1: The :class:`LocalisationFunctions` for the given coarse function space
+        :type lf_1: :class:`LocalisationFunctions`
+
+        :arg lf_2: The :class:`LocalisationFunctions` for the given fine function space
+        :type lf_2: :class:`LocalisationFunctions`
 
     """
 
@@ -76,6 +80,18 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
     if n is not len(ensemble_f):
         raise ValueError('Both ensembles need to be of the same length')
 
+    # check if the localisation functions are of that type
+    if not (isinstance(lf_1, LocalisationFunctions) or isinstance(lf_2, LocalisationFunctions)):
+        raise ValueError('localisation_functions needs to be the object LocalisationFunctions. ' +
+                         'See help(LocalisationFunctions) for details')
+
+    # check that the function spaces of :class:`LocalisationFunctions` are the same
+    assert lf_1.function_space == fsc
+    assert lf_2.function_space == fsf
+
+    # check that radius of localisation are the same between the two levels
+    assert lf_1.r_loc_func == lf_2.r_loc_func
+
     # check that weights have same length
     assert len(weights_c) == n
     assert len(weights_f) == n
@@ -99,15 +115,6 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
 
         if np.abs(c - 1) > 1e-3:
             raise ValueError('Fine weights dont add up to 1')
-
-    # design localisation functions for coarse and fine meshes (NB: make this in script at
-    # the start / class for it, rather than doing it at each assimilation step!)
-    Cc = []
-    Cf = []
-    for i in range(ncc):
-        Cc.append(Localisation(fsc, r_loc_func, i))
-    for i in range(ncf):
-        Cf.append(Localisation(fsf, r_loc_func, i))
 
     # preallocate new / intermediate ensembles
     new_ensemble_c = []
@@ -167,7 +174,7 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
         for i in range(ncc):
             pc = np.reshape(particles_c[i, :], ((1, n)))
             pf = np.reshape(inj_particles_f[i, :], ((1, n)))
-            Cost += Cc[j].dat.data[i] * CostMatrix(pc, pf)
+            Cost += lf_1[j].dat.data[i] * CostMatrix(pc, pf)
 
         # transform
         Pc = np.reshape(particles_c[j, :], ((1, n)))
@@ -189,7 +196,7 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
         Cost = np.zeros((n, n))
         for i in range(ncf):
             pf = np.reshape(particles_f[i, :], ((1, n)))
-            Cost += Cf[j].dat.data[i] * CostMatrix(pf, pf)
+            Cost += lf_2[j].dat.data[i] * CostMatrix(pf, pf)
 
         # transform
         Pf = np.reshape(particles_f[j, :], ((1, n)))
@@ -222,7 +229,7 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
         for i in range(ncc):
             pc = np.reshape(int_particles_c[i, :], ((1, n)))
             pf = np.reshape(inj_new_particles_f[i, :], ((1, n)))
-            Cost += Cc[j].dat.data[i] * CostMatrix(pc, pf)
+            Cost += lf_1[j].dat.data[i] * CostMatrix(pc, pf)
 
         # transform
         Pc = np.reshape(int_particles_c[j, :], ((1, n)))
