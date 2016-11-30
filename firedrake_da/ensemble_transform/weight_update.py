@@ -13,6 +13,8 @@ import numpy as np
 from firedrake_da.observations import *
 from firedrake_da.localisation import *
 
+from pyop2.profiling import timed_stage
+
 
 def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
 
@@ -53,30 +55,36 @@ def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
 
     # difference in the observation space
     p = 2
-    O = Observations(observation_coords, observations, mesh)
+    with timed_stage("Initial observation instance"):
+        O = Observations(observation_coords, observations, mesh)
     D = []
     for i in range(n):
-        f = Function(fs)
-        # have to project that difference functions back into the fs_to_project_to
-        f.assign(O.difference(ensemble[i], p))
+        with timed_stage("Preallocating functions"):
+            f = Function(fs)
+        with timed_stage("Calculating observation differences"):
+            # have to project that difference functions back into the fs_to_project_to
+            f.assign(O.difference(ensemble[i], p))
         D.append(f)
 
     # now conduct coarsening localisation and make weights
-    WLoc = []
-    for i in range(n):
-        WLoc.append(CoarseningLocalisation(D[i], r_loc))
+    with timed_stage("Coarsening localisation"):
+        WLoc = []
+        for i in range(n):
+            WLoc.append(CoarseningLocalisation(D[i], r_loc))
 
     # find number of basis coefficients and preallocate weight functions
     nc = len(WLoc[0].dat.data)
-    W = []
-    for i in range(n):
-        f = Function(fs)
-        W.append(f)
+    with timed_stage("Preallocating functions"):
+        W = []
+        for i in range(n):
+            f = Function(fs)
+            W.append(f)
 
     # gaussian likelihood
-    for j in range(n):
-        WLoc[j].dat.data[:] = (1 / np.sqrt(2 * np.pi * sigma)) * np.exp(-(1 / (2 * sigma)) *
-                                                                        WLoc[j].dat.data[:])
+    with timed_stage("Likelihood calulcation"):
+        for j in range(n):
+            WLoc[j].dat.data[:] = (1 / np.sqrt(2 * np.pi * sigma)) * np.exp(-(1 / (2 * sigma)) *
+                                                                            WLoc[j].dat.data[:])
 
     # normalize and check weights
     t = np.zeros(nc)
@@ -84,11 +92,12 @@ def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
     for j in range(n):
         t += WLoc[j].dat.data[:]
 
-    for k in range(n):
-        W[k].dat.data[:] = np.divide(WLoc[k].dat.data[:], t)
-        c += W[k].dat.data[:]
+    with timed_stage("Checking weights"):
+        for k in range(n):
+            W[k].dat.data[:] = np.divide(WLoc[k].dat.data[:], t)
+            c += W[k].dat.data[:]
 
-    if np.max(np.abs(c - 1)) > 1e-3:
-        raise ValueError('Weights dont add up to 1')
+        if np.max(np.abs(c - 1)) > 1e-3:
+            raise ValueError('Weights dont add up to 1')
 
     return W
