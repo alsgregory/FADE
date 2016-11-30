@@ -8,7 +8,9 @@ PuLP (https://pypi.python.org/pypi/PuLP) is also required for the Earth Mover's 
 
 1. `pip install pulp`
 
-To install, type the following commands into the terminal:
+Finally, for some demos to work it is required to have Firedrake-MLMC installed (a side-package of http://firedrakeproject.org). Instructions on how to do this can be found at: https://github.com/firedrakeproject/firedrake-mlmc.
+
+Then, to install firedrake_da, type the following commands into the terminal:
 
 1. `git clone https://github.com/firedrake_da `
 2. `pip install -e ./firedrake_da`
