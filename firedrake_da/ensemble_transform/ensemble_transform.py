@@ -44,14 +44,12 @@ def ensemble_transform_update(ensemble, weights, localisation_functions):
 
     # check that weights add up to one
     nc = len(ensemble[0].dat.data)
-    for i in range(nc):
+    c = np.zeros(nc)
+    for k in range(n):
+        c += weights[k].dat.data[:]
 
-        c = 0
-        for k in range(n):
-            c += weights[k].dat.data[i]
-
-        if np.abs(c - 1) > 1e-3:
-            raise ValueError('Weights dont add up to 1')
+    if np.max(np.abs(c - 1)) > 1e-3:
+        raise ValueError('Weights dont add up to 1')
 
     # check if the localisation functions are of that type
     if not isinstance(localisation_functions, LocalisationFunctions):
@@ -70,10 +68,9 @@ def ensemble_transform_update(ensemble, weights, localisation_functions):
     # find particle and weights matrcies
     particles = np.zeros((nc, n))
     w = np.zeros((nc, n))
-    for j in range(nc):
-        for k in range(n):
-            particles[j, k] = ensemble[k].dat.data[j]
-            w[j, k] = weights[k].dat.data[j]
+    for k in range(n):
+        particles[:, k] = ensemble[k].dat.data[:]
+        w[:, k] = weights[k].dat.data[:]
 
     # for each component carry out emd
     for j in range(nc):
@@ -99,12 +96,11 @@ def ensemble_transform_update(ensemble, weights, localisation_functions):
             new_ensemble[k].dat.data[j] = ens[0, k]
 
     # check that components have the same mean
-    for j in range(nc):
-        mn = 0
-        m = 0
-        for k in range(n):
-            mn += new_ensemble[k].dat.data[j] * (1.0 / n)
-            m += ensemble[k].dat.data[j] * weights[k].dat.data[j]
-        assert np.abs(mn - m) < 1e-5
+    mn = np.zeros(nc)
+    m = np.zeros(nc)
+    for k in range(n):
+        mn += new_ensemble[k].dat.data[:] * (1.0 / n)
+        m += np.multiply(ensemble[k].dat.data[:], weights[k].dat.data[:])
+    assert np.max(np.abs(mn - m)) < 1e-5
 
     return new_ensemble
