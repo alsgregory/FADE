@@ -73,23 +73,22 @@ def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
         f = Function(fs)
         W.append(f)
 
-    for i in range(nc):
+    # gaussian likelihood
+    for j in range(n):
+        WLoc[j].dat.data[:] = (1 / np.sqrt(2 * np.pi * sigma)) * np.exp(-(1 / (2 * sigma)) *
+                                                                        WLoc[j].dat.data[:])
 
-        # gaussian likelihood
-        for j in range(n):
-            WLoc[j].dat.data[i] = (1 / np.sqrt(2 * np.pi * sigma)) * np.exp(-(1 / (2 * sigma)) *
-                                                                            WLoc[j].dat.data[i])
+    # normalize and check weights
+    t = np.zeros(nc)
+    c = np.zeros(nc)
+    for j in range(n):
+        t += WLoc[j].dat.data[:]
 
-        # normalize
-        t = 0
-        for j in range(n):
-            t += WLoc[j].dat.data[i]
-        c = 0
-        for k in range(n):
-            W[k].dat.data[i] = WLoc[k].dat.data[i] / t
-            c += W[k].dat.data[i]
+    for k in range(n):
+        W[k].dat.data[:] = np.divide(WLoc[k].dat.data[:], t)
+        c += W[k].dat.data[:]
 
-        if np.abs(c - 1) > 1e-3:
-            raise ValueError('Weights dont add up to 1')
+    if np.max(np.abs(c - 1)) > 1e-3:
+        raise ValueError('Weights dont add up to 1')
 
     return W

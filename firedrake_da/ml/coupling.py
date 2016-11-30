@@ -99,22 +99,14 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
     # check that weights add up to one
     ncc = len(ensemble_c[0].dat.data)
     ncf = len(ensemble_f[0].dat.data)
-    for i in range(ncc):
+    cc = np.zeros(ncc)
+    cf = np.zeros(ncf)
+    for k in range(n):
+        cc += weights_c[k].dat.data[:]
+        cf += weights_f[k].dat.data[:]
 
-        c = 0
-        for k in range(n):
-            c += weights_c[k].dat.data[i]
-
-        if np.abs(c - 1) > 1e-3:
-            raise ValueError('Coarse weights dont add up to 1')
-    for i in range(ncf):
-
-        c = 0
-        for k in range(n):
-            c += weights_f[k].dat.data[i]
-
-        if np.abs(c - 1) > 1e-3:
-            raise ValueError('Fine weights dont add up to 1')
+    if np.max(np.abs(cc - 1)) > 1e-3 or np.max(np.abs(cf - 1)) > 1e-3:
+        raise ValueError('Coarse weights dont add up to 1')
 
     # preallocate new / intermediate ensembles
     new_ensemble_c = []
@@ -148,16 +140,13 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
     w_f = np.zeros((ncf, n))
     inj_particles_f = np.zeros((ncc, n))
     inj_w_f = np.zeros((ncc, n))
-    for j in range(ncc):
-        for k in range(n):
-            particles_c[j, k] = ensemble_c[k].dat.data[j]
-            w_c[j, k] = weights_c[k].dat.data[j]
-            inj_particles_f[j, k] = inj_ensemble_f[k].dat.data[j]
-            inj_w_f[j, k] = inj_weights_f[k].dat.data[j]
-    for j in range(ncf):
-        for k in range(n):
-            particles_f[j, k] = ensemble_f[k].dat.data[j]
-            w_f[j, k] = weights_f[k].dat.data[j]
+    for k in range(n):
+        particles_c[:, k] = ensemble_c[k].dat.data[:]
+        w_c[:, k] = weights_c[k].dat.data[:]
+        inj_particles_f[:, k] = inj_ensemble_f[k].dat.data[:]
+        inj_w_f[:, k] = inj_weights_f[k].dat.data[:]
+        particles_f[:, k] = ensemble_f[k].dat.data[:]
+        w_f[:, k] = weights_f[k].dat.data[:]
 
     # re-normalize injected fine weights
     for i in range(n):
@@ -185,7 +174,8 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
         # into intermediate ensemble
         for k in range(n):
             int_ensemble_c[k].dat.data[j] = ens[0, k]
-            int_particles_c[j, k] = ens[0, k]
+
+        int_particles_c[j, :] = ens[0, :]
 
     """ transform for fine ensemble """
 
@@ -217,9 +207,8 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
 
     # find particle matrices
     inj_new_particles_f = np.zeros((ncc, n))
-    for j in range(ncc):
-        for k in range(n):
-            inj_new_particles_f[j, k] = inj_new_ensemble_f[k].dat.data[j]
+    for k in range(n):
+        inj_new_particles_f[:, k] = inj_new_ensemble_f[k].dat.data[:]
 
     # for each coarse component carry out emd
     for j in range(ncc):
@@ -241,19 +230,17 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
             new_ensemble_c[k].dat.data[j] = ens[0, k]
 
     # check that components have the same mean
-    for j in range(ncc):
-        mn = 0
-        m = 0
-        for k in range(n):
-            mn += new_ensemble_c[k].dat.data[j] * (1.0 / n)
-            m += ensemble_c[k].dat.data[j] * weights_c[k].dat.data[j]
-        assert np.abs(mn - m) < 1e-5
-    for j in range(ncf):
-        mn = 0
-        m = 0
-        for k in range(n):
-            mn += new_ensemble_f[k].dat.data[j] * (1.0 / n)
-            m += ensemble_f[k].dat.data[j] * weights_f[k].dat.data[j]
-        assert np.abs(mn - m) < 1e-5
+    mnc = np.zeros(ncc)
+    mc = np.zeros(ncc)
+    mnf = np.zeros(ncf)
+    mf = np.zeros(ncf)
+    for k in range(n):
+        mnc += new_ensemble_c[k].dat.data[:] * (1.0 / n)
+        mc += np.multiply(ensemble_c[k].dat.data[:], weights_c[k].dat.data[:])
+        mnf += new_ensemble_f[k].dat.data[:] * (1.0 / n)
+        mf += np.multiply(ensemble_f[k].dat.data[:], weights_f[k].dat.data[:])
+
+    assert np.max(np.abs(mnc - mc)) < 1e-5
+    assert np.max(np.abs(mnf - mf)) < 1e-5
 
     return new_ensemble_c, new_ensemble_f
