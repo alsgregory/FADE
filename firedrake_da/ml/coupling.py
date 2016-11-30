@@ -100,7 +100,7 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
     assert len(weights_f) == n
 
     # check that weights add up to one
-    with timed_stage("Checking weights"):
+    with timed_stage("Checking weights are normalized"):
         ncc = len(ensemble_c[0].dat.data)
         ncf = len(ensemble_f[0].dat.data)
         cc = np.zeros(ncc)

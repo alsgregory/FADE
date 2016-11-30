@@ -61,7 +61,7 @@ def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
     for i in range(n):
         with timed_stage("Preallocating functions"):
             f = Function(fs)
-        with timed_stage("Calculating observation differences"):
+        with timed_stage("Calculating observation squared differences"):
             # have to project that difference functions back into the fs_to_project_to
             f.assign(O.difference(ensemble[i], p))
         D.append(f)
@@ -81,7 +81,7 @@ def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
             W.append(f)
 
     # gaussian likelihood
-    with timed_stage("Likelihood calulcation"):
+    with timed_stage("Likelihood calculation"):
         for j in range(n):
             WLoc[j].dat.data[:] = (1 / np.sqrt(2 * np.pi * sigma)) * np.exp(-(1 / (2 * sigma)) *
                                                                             WLoc[j].dat.data[:])
@@ -92,7 +92,7 @@ def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
     for j in range(n):
         t += WLoc[j].dat.data[:]
 
-    with timed_stage("Checking weights"):
+    with timed_stage("Checking weights are normalized"):
         for k in range(n):
             W[k].dat.data[:] = np.divide(WLoc[k].dat.data[:], t)
             c += W[k].dat.data[:]

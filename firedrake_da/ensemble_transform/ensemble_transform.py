@@ -45,7 +45,7 @@ def ensemble_transform_update(ensemble, weights, localisation_functions):
     assert len(weights) == n
 
     # check that weights add up to one
-    with timed_stage("Checking weights"):
+    with timed_stage("Checking weights are normalized"):
         nc = len(ensemble[0].dat.data)
         c = np.zeros(nc)
         for k in range(n):

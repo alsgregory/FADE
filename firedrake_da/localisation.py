@@ -34,7 +34,7 @@ def Localisation(fs, r_loc, index, rate=1.0):
 
     # Define coarsening localisation kernels
 
-    with timed_stage("Defining kernels"):
+    with timed_stage("Defining kernels for localisation"):
         cell2vertex_kernel = """
         for(int i=0;i<vertq.dofs;i++){
             vertq[i][0]=fmax(vertq[i][0],cell[0][0]);
