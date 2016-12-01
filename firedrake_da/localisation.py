@@ -10,6 +10,8 @@ import numpy as np
 
 from firedrake.mg.utils import get_level
 
+from pyop2.profiling import timed_stage
+
 
 def Localisation(fs, r_loc, index, rate=1.0):
 
@@ -32,20 +34,21 @@ def Localisation(fs, r_loc, index, rate=1.0):
 
     # Define coarsening localisation kernels
 
-    cell2vertex_kernel = """
-    for(int i=0;i<vertq.dofs;i++){
-        vertq[i][0]=fmax(vertq[i][0],cell[0][0]);
-    }
-    """
+    with timed_stage("Defining kernels for localisation"):
+        cell2vertex_kernel = """
+        for(int i=0;i<vertq.dofs;i++){
+            vertq[i][0]=fmax(vertq[i][0],cell[0][0]);
+        }
+        """
 
-    vertex2cellaverage_kernel = """ float scale=0; const rate=%(RATE)s;
-    for(int i=0;i<vertq.dofs;i++){
-        new_cell[0][0]+=pow(vertq[i][0],rate);
-        scale=scale+1.0;
-    }
-    new_cell[0][0]=new_cell[0][0]/(scale);
-    """
-    vertex2cellaverage_kernel = vertex2cellaverage_kernel % {"RATE": rate}
+        vertex2cellaverage_kernel = """ float scale=0; const rate=%(RATE)s;
+        for(int i=0;i<vertq.dofs;i++){
+            new_cell[0][0]+=pow(vertq[i][0],rate);
+            scale=scale+1.0;
+        }
+        new_cell[0][0]=new_cell[0][0]/(scale);
+        """
+        vertex2cellaverage_kernel = vertex2cellaverage_kernel % {"RATE": rate}
 
     # project fs to DG
     new_fs = FunctionSpace(fs.mesh(), 'DG', 0)
@@ -65,7 +68,8 @@ def Localisation(fs, r_loc, index, rate=1.0):
         return ffs
 
     # Generate a Function in new_fs with 1.0 in the cell centre
-    f = Function(new_fs).project(ffs)
+    with timed_stage("Projections for localisation"):
+        f = Function(new_fs).project(ffs)
 
     # Renormalize
     f.dat.data[:] = f.dat.data[:] / np.max(f.dat.data[:])
@@ -76,20 +80,22 @@ def Localisation(fs, r_loc, index, rate=1.0):
     dg_f = Function(new_fs)
 
     # if r_loc = 0.0, f stays as it is
-    for i in range(r_loc):
+    with timed_stage("Iterations of vertex averaging for localisation functions"):
+        for i in range(r_loc):
 
-        cg_f.assign(0)
-        dg_f.assign(0)
+            cg_f.assign(0)
+            dg_f.assign(0)
 
-        par_loop(cell2vertex_kernel, dx, {"vertq": (cg_f, RW),
-                                          "cell": (fn, READ)})
-        par_loop(vertex2cellaverage_kernel, dx, {"new_cell": (dg_f, RW),
-                                                 "vertq": (cg_f, READ)})
+            par_loop(cell2vertex_kernel, dx, {"vertq": (cg_f, RW),
+                                              "cell": (fn, READ)})
+            par_loop(vertex2cellaverage_kernel, dx, {"new_cell": (dg_f, RW),
+                                                     "vertq": (cg_f, READ)})
 
-        fn.assign(dg_f)
+            fn.assign(dg_f)
 
     # Project back to original function space
-    ffs.project(fn)
+    with timed_stage("Projections for localisation"):
+        ffs.project(fn)
 
     # Normalize
     ffs.dat.data[:] = ffs.dat.data[:] / np.max(ffs.dat.data[:])

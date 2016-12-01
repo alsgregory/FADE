@@ -16,6 +16,9 @@ from firedrake_da.ml import *
 
 import numpy as np
 
+from pyop2.profiling import timed_stage
+
+
 """" The 1D couplings are still done using emd here and not the cheap algorithm. To switch to this
 needs the ability to sort both finer subcells that are in a coarse subcell. Thus we need to pick out
 the indicies of the finer subcells and sort them according to the sorted coarse cell at the start
@@ -97,56 +100,60 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
     assert len(weights_f) == n
 
     # check that weights add up to one
-    ncc = len(ensemble_c[0].dat.data)
-    ncf = len(ensemble_f[0].dat.data)
-    cc = np.zeros(ncc)
-    cf = np.zeros(ncf)
-    for k in range(n):
-        cc += weights_c[k].dat.data[:]
-        cf += weights_f[k].dat.data[:]
+    with timed_stage("Checking weights are normalized"):
+        ncc = len(ensemble_c[0].dat.data)
+        ncf = len(ensemble_f[0].dat.data)
+        cc = np.zeros(ncc)
+        cf = np.zeros(ncf)
+        for k in range(n):
+            cc += weights_c[k].dat.data[:]
+            cf += weights_f[k].dat.data[:]
 
-    if np.max(np.abs(cc - 1)) > 1e-3 or np.max(np.abs(cf - 1)) > 1e-3:
-        raise ValueError('Coarse weights dont add up to 1')
+        if np.max(np.abs(cc - 1)) > 1e-3 or np.max(np.abs(cf - 1)) > 1e-3:
+            raise ValueError('Coarse weights dont add up to 1')
 
     # preallocate new / intermediate ensembles
-    new_ensemble_c = []
-    new_ensemble_f = []
-    int_ensemble_c = []
-    for i in range(n):
-        f = Function(fsc)
-        new_ensemble_c.append(f)
-        g = Function(fsf)
-        new_ensemble_f.append(g)
-        h = Function(fsc)
-        int_ensemble_c.append(h)
+    with timed_stage("Preallocating functions"):
+        new_ensemble_c = []
+        new_ensemble_f = []
+        int_ensemble_c = []
+        for i in range(n):
+            f = Function(fsc)
+            new_ensemble_c.append(f)
+            g = Function(fsf)
+            new_ensemble_f.append(g)
+            h = Function(fsc)
+            int_ensemble_c.append(h)
 
     # inject fine weights and ensembles down to coarse mesh
-    inj_ensemble_f = []
-    inj_weights_f = []
-    totals = np.zeros(ncc)
-    for i in range(n):
-        f = Function(fsc)
-        g = Function(fsc)
-        inj_ensemble_f.append(f)
-        inj_weights_f.append(g)
-        inject(ensemble_f[i], inj_ensemble_f[i])
-        inject(weights_f[i], inj_weights_f[i])
-        totals += inj_weights_f[i].dat.data[:]
+    with timed_stage("Injecting finer ensemble / weights down to coarse mesh"):
+        inj_ensemble_f = []
+        inj_weights_f = []
+        totals = np.zeros(ncc)
+        for i in range(n):
+            f = Function(fsc)
+            g = Function(fsc)
+            inj_ensemble_f.append(f)
+            inj_weights_f.append(g)
+            inject(ensemble_f[i], inj_ensemble_f[i])
+            inject(weights_f[i], inj_weights_f[i])
+            totals += inj_weights_f[i].dat.data[:]
 
     # find particle and weights matrcies
-    particles_c = np.zeros((ncc, n))
-    w_c = np.zeros((ncc, n))
-    particles_f = np.zeros((ncf, n))
-    w_f = np.zeros((ncf, n))
-    inj_particles_f = np.zeros((ncc, n))
-    inj_w_f = np.zeros((ncc, n))
-    for k in range(n):
-        particles_c[:, k] = ensemble_c[k].dat.data[:]
-        w_c[:, k] = weights_c[k].dat.data[:]
-        inj_particles_f[:, k] = inj_ensemble_f[k].dat.data[:]
-        inj_w_f[:, k] = inj_weights_f[k].dat.data[:]
-        particles_f[:, k] = ensemble_f[k].dat.data[:]
-        w_f[:, k] = weights_f[k].dat.data[:]
+    with timed_stage("Assigning basis coefficient arrays"):
+        particles_c = np.zeros((ncc, n))
+        w_c = np.zeros((ncc, n))
+        particles_f = np.zeros((ncf, n))
+        w_f = np.zeros((ncf, n))
+        inj_particles_f = np.zeros((ncc, n))
+        inj_w_f = np.zeros((ncc, n))
+        for k in range(n):
+            particles_c[:, k] = ensemble_c[k].dat.data[:]
+            w_c[:, k] = weights_c[k].dat.data[:]
+            inj_particles_f[:, k] = inj_ensemble_f[k].dat.data[:]
+            inj_w_f[:, k] = inj_weights_f[k].dat.data[:]
+            particles_f[:, k] = ensemble_f[k].dat.data[:]
+            w_f[:, k] = weights_f[k].dat.data[:]
 
     # re-normalize injected fine weights
     for i in range(n):
@@ -154,93 +161,97 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, lf_1,
 
     """ initial weighted coupling between coarse and fine """
 
-    # for each coarse component carry out emd
-    int_particles_c = np.zeros((ncc, n))
-    for j in range(ncc):
+    with timed_stage("Coupling between weighted coarse and fine ensembles"):
+        # for each coarse component carry out emd
+        int_particles_c = np.zeros((ncc, n))
+        for j in range(ncc):
 
-        # design cost matrix, using localisation functions
-        Cost = np.zeros((n, n))
-        for i in range(ncc):
-            pc = np.reshape(particles_c[i, :], ((1, n)))
-            pf = np.reshape(inj_particles_f[i, :], ((1, n)))
-            Cost += lf_1[j].dat.data[i] * CostMatrix(pc, pf)
+            # design cost matrix, using localisation functions
+            Cost = np.zeros((n, n))
+            for i in range(ncc):
+                pc = np.reshape(particles_c[i, :], ((1, n)))
+                pf = np.reshape(inj_particles_f[i, :], ((1, n)))
+                Cost += lf_1[j].dat.data[i] * CostMatrix(pc, pf)
 
-        # transform
-        Pc = np.reshape(particles_c[j, :], ((1, n)))
-        Pf = np.reshape(inj_particles_f[j, :], ((1, n)))
+            # transform
+            Pc = np.reshape(particles_c[j, :], ((1, n)))
+            Pf = np.reshape(inj_particles_f[j, :], ((1, n)))
 
-        ens = transform(Pc, Pf, w_c[j, :], inj_w_f[j, :], Cost)
+            ens = transform(Pc, Pf, w_c[j, :], inj_w_f[j, :], Cost)
 
-        # into intermediate ensemble
-        for k in range(n):
-            int_ensemble_c[k].dat.data[j] = ens[0, k]
+            # into intermediate ensemble
+            for k in range(n):
+                int_ensemble_c[k].dat.data[j] = ens[0, k]
 
-        int_particles_c[j, :] = ens[0, :]
+            int_particles_c[j, :] = ens[0, :]
 
     """ transform for fine ensemble """
 
-    # for each fine component carry out emd
-    for j in range(ncf):
+    with timed_stage("Finer ensemble transform"):
+        # for each fine component carry out emd
+        for j in range(ncf):
 
-        # design cost matrix, using localisation functions
-        Cost = np.zeros((n, n))
-        for i in range(ncf):
-            pf = np.reshape(particles_f[i, :], ((1, n)))
-            Cost += lf_2[j].dat.data[i] * CostMatrix(pf, pf)
+            # design cost matrix, using localisation functions
+            Cost = np.zeros((n, n))
+            for i in range(ncf):
+                pf = np.reshape(particles_f[i, :], ((1, n)))
+                Cost += lf_2[j].dat.data[i] * CostMatrix(pf, pf)
 
-        # transform
-        Pf = np.reshape(particles_f[j, :], ((1, n)))
-        ens = transform(Pf, Pf, w_f[j, :], np.ones(n) * (1.0 / n), Cost)
+            # transform
+            Pf = np.reshape(particles_f[j, :], ((1, n)))
+            ens = transform(Pf, Pf, w_f[j, :], np.ones(n) * (1.0 / n), Cost)
 
-        # into new ensemble
-        for k in range(n):
-            new_ensemble_f[k].dat.data[j] = ens[0, k]
+            # into new ensemble
+            for k in range(n):
+                new_ensemble_f[k].dat.data[j] = ens[0, k]
 
     """ coupling between weighted intermediate ensemble and transformed finer ensemble """
 
-    # inject transformed finer ensemble
-    inj_new_ensemble_f = []
-    for i in range(n):
-        f = Function(fsc)
-        inj_new_ensemble_f.append(f)
-        inject(new_ensemble_f[i], inj_new_ensemble_f[i])
+    with timed_stage("Coupling weighted intermediate ensemble and transformed finer ensemble"):
+        # inject transformed finer ensemble
+        inj_new_ensemble_f = []
+        for i in range(n):
+            f = Function(fsc)
+            inj_new_ensemble_f.append(f)
+            inject(new_ensemble_f[i], inj_new_ensemble_f[i])
 
-    # find particle matrices
-    inj_new_particles_f = np.zeros((ncc, n))
-    for k in range(n):
-        inj_new_particles_f[:, k] = inj_new_ensemble_f[k].dat.data[:]
-
-    # for each coarse component carry out emd
-    for j in range(ncc):
-
-        # design cost matrix, using localisation functions
-        Cost = np.zeros((n, n))
-        for i in range(ncc):
-            pc = np.reshape(int_particles_c[i, :], ((1, n)))
-            pf = np.reshape(inj_new_particles_f[i, :], ((1, n)))
-            Cost += lf_1[j].dat.data[i] * CostMatrix(pc, pf)
-
-        # transform
-        Pc = np.reshape(int_particles_c[j, :], ((1, n)))
-        Pf = np.reshape(inj_new_particles_f[j, :], ((1, n)))
-        ens = transform(Pc, Pf, inj_w_f[j, :], np.ones(n) * (1.0 / n), Cost)
-
-        # into new ensemble
+        # find particle matrices
+        inj_new_particles_f = np.zeros((ncc, n))
         for k in range(n):
-            new_ensemble_c[k].dat.data[j] = ens[0, k]
+            inj_new_particles_f[:, k] = inj_new_ensemble_f[k].dat.data[:]
+
+        # for each coarse component carry out emd
+        for j in range(ncc):
+
+            # design cost matrix, using localisation functions
+            Cost = np.zeros((n, n))
+            for i in range(ncc):
+                pc = np.reshape(int_particles_c[i, :], ((1, n)))
+                pf = np.reshape(inj_new_particles_f[i, :], ((1, n)))
+                Cost += lf_1[j].dat.data[i] * CostMatrix(pc, pf)
+
+            # transform
+            Pc = np.reshape(int_particles_c[j, :], ((1, n)))
+            Pf = np.reshape(inj_new_particles_f[j, :], ((1, n)))
+            ens = transform(Pc, Pf, inj_w_f[j, :], np.ones(n) * (1.0 / n), Cost)
+
+            # into new ensemble
+            for k in range(n):
+                new_ensemble_c[k].dat.data[j] = ens[0, k]
 
     # check that components have the same mean
-    mnc = np.zeros(ncc)
-    mc = np.zeros(ncc)
-    mnf = np.zeros(ncf)
-    mf = np.zeros(ncf)
-    for k in range(n):
-        mnc += new_ensemble_c[k].dat.data[:] * (1.0 / n)
-        mc += np.multiply(ensemble_c[k].dat.data[:], weights_c[k].dat.data[:])
-        mnf += new_ensemble_f[k].dat.data[:] * (1.0 / n)
-        mf += np.multiply(ensemble_f[k].dat.data[:], weights_f[k].dat.data[:])
+    with timed_stage("Checking posterior mean consistency"):
+        mnc = np.zeros(ncc)
+        mc = np.zeros(ncc)
+        mnf = np.zeros(ncf)
+        mf = np.zeros(ncf)
+        for k in range(n):
+            mnc += new_ensemble_c[k].dat.data[:] * (1.0 / n)
+            mc += np.multiply(ensemble_c[k].dat.data[:], weights_c[k].dat.data[:])
+            mnf += new_ensemble_f[k].dat.data[:] * (1.0 / n)
+            mf += np.multiply(ensemble_f[k].dat.data[:], weights_f[k].dat.data[:])
 
-    assert np.max(np.abs(mnc - mc)) < 1e-5
-    assert np.max(np.abs(mnf - mf)) < 1e-5
+        assert np.max(np.abs(mnc - mc)) < 1e-5
+        assert np.max(np.abs(mnf - mf)) < 1e-5
 
     return new_ensemble_c, new_ensemble_f
