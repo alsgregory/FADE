@@ -12,13 +12,15 @@ import numpy as np
 def test_observation_one_element_node():
 
     mesh = UnitIntervalMesh(1)
+    fs = FunctionSpace(mesh, 'DG', 0)
 
     coord = tuple([np.array([0.5])])
 
     obs = tuple([1])
 
     # check that only cell is showing as containing obs
-    obs_operator = Observations(coord, obs, mesh)
+    obs_operator = Observations(fs)
+    obs_operator.update_observation_operator(coord, obs)
 
     assert obs_operator.cells == np.array([0])
     assert obs_operator.nodes == np.array([0])
@@ -32,17 +34,19 @@ def test_observation_one_element_difference():
 
     obs = tuple([2])
 
-    obs_operator = Observations(coord, obs, mesh)
-
     # iterate over degrees for in-function
     d = tuple([1, 2])
-
     for deg in d:
-        # make in-function for difference
-        v = FunctionSpace(mesh, 'DG', deg)
-        f = Function(v)
+        fs = FunctionSpace(mesh, 'DG', deg)
 
-        diff = obs_operator.difference(f)
+        obs_operator = Observations(fs)
+        obs_operator.update_observation_operator(coord, obs)
+
+        # make in-function for difference
+        f = Function(fs)
+
+        diff = Function(fs)
+        diff.assign(obs_operator.difference(f))
 
         # check that all ((2 * d) + 1) basis coefficients is same difference
         assert len(diff.dat.data) == (1 + deg)
@@ -50,24 +54,91 @@ def test_observation_one_element_difference():
             assert np.abs(diff.dat.data[i] - 4.0) < 1e-8
 
 
+def test_observation_cells_and_nodes():
+
+    mesh = UnitIntervalMesh(1)
+    fs = FunctionSpace(mesh, 'DG', 0)
+
+    coord = tuple([np.array([0.5])])
+
+    obs = tuple([2.0])
+
+    obs_operator = Observations(fs)
+
+    obs_operator.update_observation_operator(coord, obs)
+
+    assert len(obs_operator.cells) == 1
+    assert obs_operator.cells[0] == 0
+    assert np.unique(obs_operator.nodes == np.array([0]))
+
+
+def test_observation_average():
+
+    mesh = UnitIntervalMesh(2)
+    fs = FunctionSpace(mesh, 'DG', 0)
+
+    coord = tuple([np.array([0.75]), np.array([0.75])])
+
+    obs = tuple([2.0, 3.0])
+
+    obs_operator = Observations(fs)
+
+    obs_operator.update_observation_operator(coord, obs)
+
+    assert obs_operator.observation_function.dat.data[mesh.locate_cell(coord[0])] == 2.5
+
+
 def test_observation_difference():
 
     mesh = UnitSquareMesh(10, 10)
+    fs = FunctionSpace(mesh, 'DG', 0)
 
     coord = tuple([np.array([0.1, 0.1]), np.array([0.5, 0.5])])
 
     obs = tuple([2, 2])
 
-    obs_operator = Observations(coord, obs, mesh)
+    obs_operator = Observations(fs)
 
-    v = FunctionSpace(mesh, 'DG', 0)
-    f = Function(v)
+    f = Function(fs)
 
-    diff = obs_operator.difference(f)
+    obs_operator.update_observation_operator(coord, obs)
+    diff = Function(fs)
+    diff.assign(obs_operator.difference(f))
 
     assert np.sum(diff.dat.data) == 8
 
     assert len(np.unique(obs_operator.nodes)) == 2
+
+
+def test_update_observation_difference():
+
+    mesh = UnitIntervalMesh(1)
+    fs = FunctionSpace(mesh, 'DG', 0)
+
+    coord = tuple([np.array([0.5])])
+
+    obs = tuple([2.0])
+
+    obs_operator = Observations(fs)
+
+    f = Function(fs)
+
+    obs_operator.update_observation_operator(coord, obs)
+    diff_1 = Function(fs)
+    diff_1.assign(obs_operator.difference(f))
+    assert np.max(np.abs(diff_1.dat.data - 4.0)) < 1e-5
+
+    coord = tuple([np.array([0.5])])
+
+    obs = tuple([3.0])
+
+    f.assign(2.0)
+
+    obs_operator.update_observation_operator(coord, obs)
+    assert obs_operator.observations == tuple([3.0])
+    diff_2 = Function(fs)
+    diff_2.assign(obs_operator.difference(f))
+    assert np.max(np.abs(diff_2.dat.data - 1.0)) < 1e-5
 
 
 if __name__ == "__main__":

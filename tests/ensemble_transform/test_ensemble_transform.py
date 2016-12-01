@@ -30,7 +30,8 @@ def test_ensemble_transform_mean_preserving():
 
     # compute weights - should be even
     sigma = 0.1
-    weights = weight_update(ensemble, coord, obs, sigma, r_loc)
+    observation_operator = Observations(fs)
+    weights = weight_update(ensemble, observation_operator, coord, obs, sigma, r_loc)
 
     # compute ensemble transform - should be 1.0's
     lf = LocalisationFunctions(fs, r_loc_func)
