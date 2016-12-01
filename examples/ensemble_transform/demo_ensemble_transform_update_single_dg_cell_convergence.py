@@ -28,6 +28,8 @@ lf = LocalisationFunctions(V, r_loc_func)
 coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
 
+observation_operator = Observations(V)
+
 # denote the true mean of the posterior
 TrueMean = 0.7
 
@@ -39,7 +41,7 @@ rmse = np.zeros(len(ns))
 
 
 # define the ensemble transform update step
-def ensemble_transform_step(V, n, coords, obs, sigma, lf):
+def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
 
     # generate ensemble
     ensemble = []
@@ -49,7 +51,7 @@ def ensemble_transform_step(V, n, coords, obs, sigma, lf):
 
     # generate posterior
     r_loc = 0
-    weights = weight_update(ensemble, coords, obs, sigma, r_loc)
+    weights = weight_update(ensemble, observation_operator, coords, obs, sigma, r_loc)
     X = ensemble_transform_update(ensemble, weights, lf)
 
     # generate mean
@@ -69,7 +71,7 @@ for i in range(len(ns)):
 
     for j in range(niter):
 
-        k = ensemble_transform_step(V, int(ns[i]), coords, obs, sigma, lf)
+        k = ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs, sigma, lf)
 
         temp_mse[j] = np.square(k - TrueMean)
 

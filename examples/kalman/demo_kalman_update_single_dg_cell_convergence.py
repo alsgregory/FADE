@@ -16,6 +16,8 @@ mesh = UnitIntervalMesh(1)
 V = FunctionSpace(mesh, 'DG', 0)
 fs = FunctionSpace(mesh, 'DG', 0)
 
+observation_operator = Observations(V)
+
 # the coordinates of observation (only cell)
 coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
@@ -31,7 +33,7 @@ rmse = np.zeros(len(ns))
 
 
 # define the kalman update step
-def kalman_step(V, fs, n, coords, obs, sigma):
+def kalman_step(V, fs, n, observation_operator, coords, obs, sigma):
 
     # generate ensemble
     ensemble = []
@@ -40,7 +42,7 @@ def kalman_step(V, fs, n, coords, obs, sigma):
         ensemble.append(f)
 
     # generate posterior
-    X = Kalman_update(ensemble, coords, obs, sigma, fs)
+    X = Kalman_update(ensemble, observation_operator, coords, obs, sigma, fs)
 
     # generate mean
     M = 0
@@ -60,7 +62,7 @@ for i in range(len(ns)):
 
     for j in range(niter):
 
-        k = kalman_step(V, fs, int(ns[i]), coords, obs, sigma)
+        k = kalman_step(V, fs, int(ns[i]), observation_operator, coords, obs, sigma)
 
         temp_mse[j] = np.square(k - TrueMean)
 

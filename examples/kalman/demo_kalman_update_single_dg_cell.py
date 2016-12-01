@@ -7,6 +7,8 @@ mesh = UnitSquareMesh(1, 1)
 V = FunctionSpace(mesh, 'DG', 1)
 fs = FunctionSpace(mesh, 'DG', 0)
 
+observation_operator = Observations(V)
+
 coords = tuple([np.array([0.5, 0.5])])
 obs = tuple([0.5])
 
@@ -20,4 +22,4 @@ for i in range(n):
     ensemble.append(f)
 
 cov = Covariance(ensemble, fs)
-X = Kalman_update(ensemble, coords, obs, sigma, fs)
+X = Kalman_update(ensemble, observation_operator, coords, obs, sigma, fs)

@@ -34,8 +34,10 @@ def test_coupling_mean_preserving():
 
     # compute weights - should be even
     sigma = 0.1
-    weights_c = weight_update(ensemble_c, coord, obs, sigma, r_loc)
-    weights_f = weight_update(ensemble_f, coord, obs, sigma, r_loc)
+    observation_operator_c = Observations(fsc)
+    observation_operator_f = Observations(fsf)
+    weights_c = weight_update(ensemble_c, observation_operator_c, coord, obs, sigma, r_loc)
+    weights_f = weight_update(ensemble_f, observation_operator_f, coord, obs, sigma, r_loc)
 
     # compute ensemble transform - should be 1.0's
     lfc = LocalisationFunctions(fsc, r_loc_func)

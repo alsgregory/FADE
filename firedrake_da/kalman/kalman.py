@@ -12,12 +12,16 @@ from firedrake_da.kalman.cov import *
 from firedrake_da.observations import *
 
 
-def Kalman_update(ensemble, observation_coords, observations, sigma, fs_to_project_to="default"):
+def Kalman_update(ensemble, observation_operator, observation_coords, observations,
+                  sigma, fs_to_project_to="default"):
 
     """
 
         :arg ensemble: list of :class:`Function`s in the ensemble
         :type ensemble: tuple / list
+
+        :arg observation_operator: the :class:`Observations` for the assimilation problem
+        :type observation_operator: :class:`Observations`
 
         :arg observation_coords: tuple / list defining the coords of observations
         :type observation_coords: tuple / list
@@ -55,12 +59,12 @@ def Kalman_update(ensemble, observation_coords, observations, sigma, fs_to_proje
 
     # difference in the observation space
     p = 1
-    O = Observations(observation_coords, observations, mesh)
+    observation_operator.update_observation_operator(observation_coords, observations)
     D = []
     for i in range(n):
         f = Function(fs_to_project_to)
         # have to project that difference functions back into the fs_to_project_to
-        f.project(O.difference(ensemble[i], p))
+        f.project(observation_operator.difference(ensemble[i], p))
         D.append(f)
 
     # now put this difference in matrix of data

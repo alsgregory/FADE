@@ -16,12 +16,16 @@ from firedrake_da.localisation import *
 from pyop2.profiling import timed_stage
 
 
-def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
+def weight_update(ensemble, observation_operator, observation_coords,
+                  observations, sigma, r_loc):
 
     """ Calculates the importance weights of ensemble members around assumed gaussian observations
 
         :arg ensemble: list of :class:`Function`s in the ensemble
         :type ensemble: tuple / list
+
+        :arg observation_operator: the :class:`Observations` for the assimilation problem
+        :type observation_operator: :class:`Observations`
 
         :arg observation_coords: tuple / list defining the coords of observations
         :type observation_coords: tuple / list
@@ -56,14 +60,15 @@ def weight_update(ensemble, observation_coords, observations, sigma, r_loc):
     # difference in the observation space
     p = 2
     with timed_stage("Initial observation instance"):
-        O = Observations(observation_coords, observations, mesh)
+        observation_operator.update_observation_operator(observation_coords,
+                                                         observations)
     D = []
     for i in range(n):
         with timed_stage("Preallocating functions"):
             f = Function(fs)
         with timed_stage("Calculating observation squared differences"):
             # have to project that difference functions back into the fs_to_project_to
-            f.assign(O.difference(ensemble[i], p))
+            f.assign(observation_operator.difference(ensemble[i], p))
         D.append(f)
 
     # now conduct coarsening localisation and make weights

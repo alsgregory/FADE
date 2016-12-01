@@ -1,4 +1,4 @@
-""" class taking in observations (given by coordinates) and using them in firedrake_dataassimilation """
+""" class taking in observations (given by coordinates) and using them in firedrake_da """
 
 from __future__ import division
 
@@ -11,9 +11,47 @@ from firedrake_da.utils import *
 
 class Observations(object):
 
-    def __init__(self, observation_coords, observations, mesh):
+    def __init__(self, fs):
+
+        """ Initializes projections for ensemble members to be assimilated via an observation
+            operator. Once updated with new set of coordinates and observations, one can
+            find the p-norm differences between ensemble members and the observations space.
+
+            :arg fs: :class:`FunctionSpace` of the functions in the ensemble to be assimilated
+            :type fs: :class:`FunctionSpace`
 
         """
+
+        self.mesh = fs.mesh()
+        self.fs = fs
+
+        # define the DG0 function space
+        self.cell_fs = FunctionSpace(self.mesh, 'DG', 0)
+        self.cell_func = Function(self.cell_fs)
+
+        # preallocate cells and nodes for observations as well as them themselves
+        self.cells = None
+        self.nodes = None
+        self.observation_coords = None
+        self.observations = None
+
+        # projection operators
+        self.in_func = Function(self.cell_fs)
+        self.func = Function(self.fs)
+        self.in_Project = Projector(self.func, self.in_func)
+
+        self.cell_differences = Function(self.cell_fs)
+        self.out_func = Function(self.fs)
+        self.out_Project = Projector(self.cell_differences, self.out_func)
+
+        self.observation_function = Function(self.cell_fs)
+
+        super(Observations, self).__init__()
+
+    def update_observation_operator(self, observation_coords, observations):
+
+        """ Updates observation operator (places coordinate observations on to mesh via DG0 cells)
+            with new set of observations.
 
             :arg observation_coords: tuple / list defining the coords of observations
             :type observation_coords: tuple / list
@@ -21,37 +59,37 @@ class Observations(object):
             :arg observations: tuple / list of observation state values
             :type observations: tuple / list
 
-            :arg mesh: mesh that observations need to be interpolated on
-            :type mesh: :class:`Mesh`
-
         """
 
-        self.mesh = mesh
+        # update observations and coordinates
         self.observation_coords = observation_coords
         self.observations = observations
 
         # find cells of mesh that contain observation
         self.cells = PointToCell(self.observation_coords, self.mesh)
 
-        # define the DG0 function space
-        self.cell_fs = FunctionSpace(self.mesh, 'DG', 0)
-        self.cell_func = Function(self.cell_fs)
-
         # find nodes that contain observations
         self.nodes = CellToNode(self.cells, self.cell_fs)
 
-        # length of observations
-        self.ny = len(self.observations)
-
-        super(Observations, self).__init__()
+        # for each node, aggregate observations over cells
+        ny = len(self.observations)
+        self.observation_function.assign(0)
+        norm_const = np.zeros(len(self.observation_function.dat.data))
+        for i in range(ny):
+            ind = self.nodes[i].astype(int)
+            self.observation_function.dat.data[ind] += self.observations[i]
+            norm_const[ind] += 1.0
+        norm_const = np.maximum(norm_const, np.ones(len(self.observation_function.dat.data)))
+        self.observation_function.dat.data[:] = np.divide(self.observation_function.dat.data[:],
+                                                          norm_const)
 
     def difference(self, func, p=2):
 
         """ finds p-norm difference between a function and observations
         for each cell in a DG0 fs
 
-            :arg func: the :class:`Function` to find the difference between
-            observations and it
+            :arg func: the :class:`Function` to find the p-norm difference between itself and
+            observations
             :type func: :class:`Function`
 
             :arg p: degree of p-norm
@@ -59,23 +97,27 @@ class Observations(object):
 
         """
 
-        out_func = Function(func.function_space())
+        # check that observations have been initialized
+        obs = [self.observation_coords, self.observations, self.cells, self.nodes]
+        for ob in obs:
+            if ob is None:
+                raise ValueError("Observations havent been initialized. " +
+                                 "Use Observations.update_observation_operator")
 
-        # find the DG0 diffs aggregated over all observations in a cell
-        cell_diff = Function(self.cell_fs)
+        # check that func belongs to function space that observation operator is initialized around
+        if func.function_space() is not self.fs:
+            raise ValueError("Function space of func is not same as one for observation operator " +
+                             "initialization")
 
-        # project func to DG0
-        in_func = Function(self.cell_fs)
-        in_func.project(func)
+        # project func to DG0 using project and previously initialized in-function
+        self.func.assign(func)
+        self.in_Project.project()
 
-        # next use kernel to iterate over adding up cell
-        # averages for observation
-        for i in range(self.ny):
-            ind = self.nodes[i].astype(int)
-            cell_diff.dat.data[ind] += (self.observations[i] -
-                                        in_func.dat.data[ind]) ** p
+        # next, find the squared distance between the function and aggregated observations
+        self.cell_differences.assign(assemble((self.observation_function -
+                                               self.in_func) ** p))
 
-        # project back to (depends on what post processing one wants surely!)
-        out_func.project(cell_diff)
+        # project back to function space of ensemble
+        self.out_Project.project()
 
-        return out_func
+        return self.out_func
