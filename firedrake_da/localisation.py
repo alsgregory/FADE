@@ -1,4 +1,4 @@
-""" localisation matricies of basis coeffs of functions in Firedrake """
+""" localisation of basis coeffs of functions in Firedrake """
 
 from __future__ import division
 
@@ -15,8 +15,9 @@ from pyop2.profiling import timed_stage
 
 def Localisation(fs, r_loc, index, rate=1.0):
 
-    """ Creates a localisation :class:`Function` of scaling coefficients for the basis coeffs for a
-    :class:`Function` in a certain :class:`FunctionSpace`.
+    """ Creates a localisation :class:`Function` of scaling coefficients
+    for the basis coeffs for a :class:`Function` in a certain
+    :class:`FunctionSpace`. NB: Degenrate function!
 
         :arg fs: The :class:`FunctionSpace` for the basis coeffs
         :type fs: :class:`FunctionSpace:

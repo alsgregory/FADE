@@ -12,8 +12,6 @@ from firedrake_da.EMD.emd_kernel import *
 
 from pyop2.profiling import timed_stage
 
-# NB: This transform is totally localised at the moment, as we need to incorporate loc functions
-
 
 def ensemble_transform_update(ensemble, weights, r_loc):
 
