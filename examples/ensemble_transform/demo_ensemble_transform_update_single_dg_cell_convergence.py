@@ -20,10 +20,6 @@ mesh = mesh_hierarchy[0]
 
 V = FunctionSpace(mesh, 'DG', 0)
 
-# generate localisation functions
-r_loc_func = 0
-lf = LocalisationFunctions(V, r_loc_func)
-
 # the coordinates of observation (only cell)
 coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
@@ -41,7 +37,7 @@ rmse = np.zeros(len(ns))
 
 
 # define the ensemble transform update step
-def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
+def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma):
 
     # generate ensemble
     ensemble = []
@@ -52,7 +48,7 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
     # generate posterior
     r_loc = 0
     weights = weight_update(ensemble, observation_operator, coords, obs, sigma, r_loc)
-    X = ensemble_transform_update(ensemble, weights, lf)
+    X = ensemble_transform_update(ensemble, weights, r_loc)
 
     # generate mean
     M = 0
@@ -71,7 +67,7 @@ for i in range(len(ns)):
 
     for j in range(niter):
 
-        k = ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs, sigma, lf)
+        k = ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs, sigma)
 
         temp_mse[j] = np.square(k - TrueMean)
 

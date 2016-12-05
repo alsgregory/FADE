@@ -20,11 +20,6 @@ mesh_hierarchy = MeshHierarchy(mesh, 1)
 Vc = FunctionSpace(mesh_hierarchy[0], 'DG', 0)
 Vf = FunctionSpace(mesh_hierarchy[1], 'DG', 0)
 
-# generate localisation functions
-r_loc_func = 0
-lfc = LocalisationFunctions(Vc, r_loc_func)
-lff = LocalisationFunctions(Vf, r_loc_func)
-
 # the coordinates of observation (only one cell)
 coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
@@ -44,7 +39,7 @@ rmse_f = np.zeros(len(ns))
 
 
 # define the seamless coupling update step
-def seamless_coupling_step(Vc, Vf, n, oo_c, oo_f, coords, obs, sigma, lfc, lff):
+def seamless_coupling_step(Vc, Vf, n, oo_c, oo_f, coords, obs, sigma):
 
     # generate ensemble
     ensemble_c = []
@@ -59,7 +54,7 @@ def seamless_coupling_step(Vc, Vf, n, oo_c, oo_f, coords, obs, sigma, lfc, lff):
     r_loc = 0
     weights_c = weight_update(ensemble_c, oo_c, coords, obs, sigma, r_loc)
     weights_f = weight_update(ensemble_f, oo_f, coords, obs, sigma, r_loc)
-    Xc, Xf = seamless_coupling_update(ensemble_c, ensemble_f, weights_c, weights_f, lfc, lff)
+    Xc, Xf = seamless_coupling_update(ensemble_c, ensemble_f, weights_c, weights_f, r_loc, r_loc)
 
     # generate coarse / fine mean at the cell which contains coordinate of observation
     mesh_c = Vc.mesh()
@@ -85,7 +80,7 @@ for i in range(len(ns)):
     for j in range(niter):
 
         kc, kf = seamless_coupling_step(Vc, Vf, int(ns[i]), observation_operator_c,
-                                        observation_operator_f, coords, obs, sigma, lfc, lff)
+                                        observation_operator_f, coords, obs, sigma)
 
         temp_mse_c[j] = np.square(kc - TrueMean)
         temp_mse_f[j] = np.square(kf - TrueMean)
