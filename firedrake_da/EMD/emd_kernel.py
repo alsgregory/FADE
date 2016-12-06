@@ -60,19 +60,16 @@ def update_Dictionary(Dict, ensemble, generic_label, access):
     return Dict
 
 
-def get_emd_kernel(n, r_loc):
+def get_emd_kernel(n):
 
     """ Generates an emd kernel for functions in Firedrake
 
         :arg n: size of ensembles
         :type n: int
 
-        :arg r_loc: Radius of coarsening localisation for the cost functions
-        :type r_loc: int
-
     """
 
-    cost_str = get_cost_str(n, r_loc)
+    cost_str = get_cost_str(n)
 
     # get feature string
     feature_str = get_feature_str(n)
@@ -122,20 +119,12 @@ def get_emd_kernel(n, r_loc):
     return emd_kernel
 
 
-def get_cost_str(n, r_loc):
+def get_cost_str(n):
 
-    # let r_loc act like a switch parameter to check whether there is localisation
-    if r_loc > 0:
-        cost_str = " "
-        for i in range(n):
-            for j in range(n):
-                cost_str += "_COST[" + str(i) + "][" + str(j) + "]=cost_f_" + str(i) + "_" + str(j) + "[k][0];\n"
-    # WARNING: This doesn't look like it's improving funtime for r_loc = 0 cases, is there any benefit?
-    if r_loc == 0:
-        cost_str = " "
-        for i in range(n):
-            for j in range(n):
-                cost_str += "_COST[" + str(i) + "][" + str(j) + "]=(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0])*(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0]);\n"
+    cost_str = " "
+    for i in range(n):
+        for j in range(n):
+            cost_str += "_COST[" + str(i) + "][" + str(j) + "]=cost_f_" + str(i) + "_" + str(j) + "[k][0];\n"
 
     return cost_str
 
@@ -262,7 +251,7 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, cost_func
     """
 
     # generate emd kernel
-    emd_k = get_emd_kernel(len(ensemble), r_loc)
+    emd_k = get_emd_kernel(len(ensemble))
 
     # generate cost funcs
     cost_funcs = generate_localised_cost_funcs(ensemble, ensemble2, cost_funcs, r_loc)
