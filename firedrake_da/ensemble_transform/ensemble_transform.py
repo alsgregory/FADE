@@ -67,9 +67,9 @@ def ensemble_transform_update(ensemble, weights, r_loc):
         f = Function(fs).assign(1.0 / n)
         weights2.append(f)
 
-    with timed_stage("Ensemble transform"):
-        kernel_transform(ensemble, ensemble, weights, weights2,
-                         new_ensemble, cost_funcs, r_loc)
+    # ensemble transform implementation
+    kernel_transform(ensemble, ensemble, weights, weights2,
+                     new_ensemble, cost_funcs, r_loc)
 
     # check that components have the same mean
     with timed_stage("Checking posterior mean consistency"):

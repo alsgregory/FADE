@@ -11,6 +11,8 @@ import numpy as np
 
 import os
 
+from pyop2.profiling import timed_stage
+
 
 # NOTE: Only need to generate these kernels (well just EMD_KERNEL AS THE REST WILL FOLLOW) once at the start of the assimilation, and just use this for whole process. Aslong as the labels for dictionary stay the same!
 
@@ -220,12 +222,14 @@ def generate_localised_cost_funcs(ensemble, ensemble2, cost_funcs, r_loc):
         CostDict = update_Dictionary(CostDict, cost_funcs[i][:], "cost_f_" + str(i) + "_", "WRITE")
 
     # implement cost function generation
-    par_loop(cost_func_kernel, dx, CostDict)
+    with timed_stage("Generating cost functions to minimise"):
+        par_loop(cost_func_kernel, dx, CostDict)
 
     # carry out coarsening localisation
-    for i in range(len(ensemble)):
-        for j in range(len(ensemble)):
-            cost_funcs[i][j] = CoarseningLocalisation(cost_funcs[i][j], r_loc)
+    with timed_stage("Coarsening localisation"):
+        for i in range(len(ensemble)):
+            for j in range(len(ensemble)):
+                cost_funcs[i][j] = CoarseningLocalisation(cost_funcs[i][j], r_loc)
 
     return cost_funcs
 
@@ -294,5 +298,6 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, cost_func
     include_dirs=[p + "/firedrake_da/EMD"]
 
     # carry out par_loop -> out_func gets overwritten
-    par_loop(emd_k, dx, Dict, ldargs=ldargs, headers=headers,
-             include_dirs=include_dirs)
+    with timed_stage("Ensemble transform"):
+        par_loop(emd_k, dx, Dict, ldargs=ldargs, headers=headers,
+                 include_dirs=include_dirs)
