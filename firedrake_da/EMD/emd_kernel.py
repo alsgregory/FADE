@@ -13,6 +13,8 @@ import os
 
 from pyop2.profiling import timed_stage
 
+from ufl.classes import IndexSum, MultiIndex, Product
+
 
 # NOTE: Only need to generate these kernels (well just EMD_KERNEL AS THE REST WILL FOLLOW) once at the start of the assimilation, and just use this for whole process. Aslong as the labels for dictionary stay the same!
 
@@ -124,25 +126,9 @@ def get_cost_str(n):
     cost_str = " "
     for i in range(n):
         for j in range(n):
-            cost_str += "_COST[" + str(i) + "][" + str(j) + "]=cost_f_" + str(i) + "_" + str(j) + "[k][0];\n"
+            cost_str += "_COST[" + str(i) + "][" + str(j) + "]=cost_tensor[k][" + str((i * n) + j) + "];\n"
 
     return cost_str
-
-
-def get_cost_func_kernel(n):
-
-    cost_func_str = " "
-    for i in range(n):
-        for j in range(n):
-            cost_func_str += "cost_f_" + str(i) + "_" + str(j) + "[k][0]=(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0])*(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0]);\n"
-
-    cost_func_kernel = """
-    for (int k=0;k<input_f_0.dofs;k++){
-    """ + cost_func_str + """
-    }
-    """
-
-    return cost_func_kernel
 
 
 def get_output_str(n):
@@ -192,38 +178,121 @@ def get_feature_str(n):
     return feature_str
 
 
-def generate_localised_cost_funcs(ensemble, ensemble2, cost_funcs, r_loc):
+def generate_localised_cost_tensor(ensemble, ensemble2, r_loc):
 
-    # generate cost function kernel
-    cost_func_kernel = get_cost_func_kernel(len(ensemble))
+    """ Computes a (localised) cost tensor function for the squared different between two ensembles
 
-    # make cost func dictionary
-    CostDict = {}
+        :arg ensemble: The first ensemble of functions to couple
+        :type ensemble: list / tuple
 
-    # update cost func dictionary with functions
-    CostDict = update_Dictionary(CostDict, ensemble, "input_f_", "READ")
+        :arg ensemble2: The second ensemble of functions to couple
+        :type ensemble2: list / tuple
 
-    # update with functions
-    CostDict = update_Dictionary(CostDict, ensemble2, "input_f2_", "READ")
+        :arg r_loc: Radius of coarsening localisation for the cost tensor
+        :type r_loc: int 
 
-    # update with cost functions
-    for i in range(len(ensemble)):
-        CostDict = update_Dictionary(CostDict, cost_funcs[i][:], "cost_f_" + str(i) + "_", "WRITE")
+    """
 
-    # implement cost function generation
-    with timed_stage("Generating cost functions to minimise"):
-        par_loop(cost_func_kernel, dx, CostDict)
+    n = len(ensemble)
+    assert len(ensemble2) == n
+
+    mesh = ensemble[0].function_space().mesh()
+
+    # get deg and fam of function space
+    deg = ensemble[0].function_space().ufl_element().degree()
+    fam = ensemble[0].function_space().ufl_element().family()
+
+    # assert that its the same in ensemble2
+    assert deg == ensemble2[0].function_space().ufl_element().degree()
+    assert fam == ensemble2[0].function_space().ufl_element().family()
+
+    # if in CG project to DG
+    if fam == 'CG' or fam == 'Lagrange':
+        with timed_stage("Projecting from CG to DG"):
+            fs = FunctionSpace(mesh, 'DG', deg)
+            for i in range(n):
+                f = Function(fs)
+                project(ensemble[i], f)
+                ensemble[i] = f
+                f = Function(fs)
+                project(ensemble2[i], f)
+                ensemble2[i] = f
+
+    # make tensor function space and vector function space
+    tfs = TensorFunctionSpace(mesh, 'DG', deg, (n, n))
+    tfsp = TensorFunctionSpace(mesh, fam, deg, (n, n))
+    vfs = VectorFunctionSpace(mesh, 'DG', deg, dim=n)
+
+    # make test function and ensemble functions
+    phi = TestFunction(tfs)
+    ensemble_f = Function(vfs)
+    ensemble2_f = Function(vfs)
+    if n == 1:
+        ensemble_f.dat.data[:] = ensemble[0].dat.data[:]
+        ensemble2_f.dat.data[:] = ensemble2[0].dat.data[:]
+
+    else:
+        for i in range(n):
+            ensemble_f.dat.data[:, i] = ensemble[i].dat.data
+            ensemble2_f.dat.data[:, i] = ensemble2[i].dat.data
+
+    # compute unlocalised DG cost function tensor
+    nc = ensemble[0].function_space().dof_dset.size
+    i, j = indices(2)
+    with timed_stage("Creating the cost tensor"):
+        f = ((IndexSum(IndexSum(Product(nc * phi[i, j], Product(ensemble_f[i], ensemble_f[i])),
+                                MultiIndex((i,))), MultiIndex((j,))) * dx) +
+             (IndexSum(IndexSum(Product(nc * phi[i, j], Product(ensemble2_f[j], ensemble2_f[j])),
+                                MultiIndex((i,))), MultiIndex((j,))) * dx) -
+             (IndexSum(IndexSum(2 * nc * Product(phi[i, j], Product(ensemble_f[i], ensemble2_f[j])),
+                                MultiIndex((i,))), MultiIndex((j,))) * dx))
+
+        cost_tensor = assemble(f)
+
+    # assign to functions from tensor
+    fs = ensemble[0].function_space()
+    cost_funcs = []
+    if n == 1:
+        cost_funcs.append([])
+        f = Function(fs)
+        f.dat.data[:] = cost_tensor.dat.data[:]
+        cost_funcs[0].append(f)
+
+    else:
+        for i in range(n):
+            cost_funcs.append([])
+            for j in range(n):
+                f = Function(fs)
+                f.dat.data[:] = cost_tensor.dat.data[:, i, j]
+                cost_funcs[i].append(f)
 
     # carry out coarsening localisation
     with timed_stage("Coarsening localisation"):
-        for i in range(len(ensemble)):
-            for j in range(len(ensemble)):
+        for i in range(n):
+            for j in range(n):
                 cost_funcs[i][j] = CoarseningLocalisation(cost_funcs[i][j], r_loc)
 
-    return cost_funcs
+    # put basis coefficients back to tensor and project back to old function space
+    if n == 1:
+        cost_tensor.dat.data[:] = cost_funcs[0][0].dat.data[:]
+        if fam == 'CG' or fam == 'Lagrange':
+            with timed_stage("Projecting from DG to CG"):
+                cost_tensor_p = Function(tfsp)
+                cost_tensor_p.project(cost_tensor)
+
+    else:
+        for i in range(n):
+            for j in range(n):
+                cost_tensor.dat.data[:, i, j] = cost_funcs[i][j].dat.data[:]
+        if fam == 'CG' or fam == 'Lagrange':
+            with timed_stage("Projecting from DG to CG"):
+                cost_tensor_p = Function(tfsp)
+                cost_tensor_p.project(cost_tensor)
+
+    return cost_tensor
 
 
-def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, cost_funcs, r_loc):
+def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc):
 
     """ Carries out a coupling transform using kernels
 
@@ -242,9 +311,6 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, cost_func
         :arg out_func: A list of functions to output the transform ensemble to
         :type out_func: list / tuple
 
-        :arg cost_funcs: A list within a list of N x N preallocated functions of cost from i to j member
-        :type cost_funcs: list / tuple
-
         :arg r_loc: Radius of coarsening localisation for the cost function
         :type r_loc: int
 
@@ -254,7 +320,7 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, cost_func
     emd_k = get_emd_kernel(len(ensemble))
 
     # generate cost funcs
-    cost_funcs = generate_localised_cost_funcs(ensemble, ensemble2, cost_funcs, r_loc)
+    cost_tensor = generate_localised_cost_tensor(ensemble, ensemble2, r_loc)
 
     # make dictionary
     Dict = {}
@@ -274,9 +340,8 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, cost_func
     # update with output functions
     Dict = update_Dictionary(Dict, out_func, "output_f_", "WRITE")
 
-    # update with cost functions
-    for i in range(len(ensemble)):
-        Dict = update_Dictionary(Dict, cost_funcs[i][:], "cost_f_" + str(i) + "_", "READ")
+    # update with cost tensor
+    Dict.update({"cost_tensor":(cost_tensor, READ)})
 
     # current working directory
     p = os.getcwd()

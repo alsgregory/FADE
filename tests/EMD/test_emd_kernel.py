@@ -19,6 +19,7 @@ def test_invariant_transform():
 
     V = FunctionSpace(mesh, 'DG', 0)
 
+    # no coarsening localisation needed
     r_loc = 0
 
     weights = []
@@ -49,15 +50,13 @@ def test_localisation():
     f = Function(V).assign(1)
     ensemble.append(f)
 
-    f = Function(V)
-    cost_funcs = ([[f]])
     r_locs = [0, 1]
     for r_loc in r_locs:
-        cost_funcs = generate_localised_cost_funcs(ensemble, ensemble, cost_funcs, r_loc)
-        assert np.max(np.abs(cost_funcs[0][0].dat.data[:])) < 1e-5
+        cost_tensor = generate_localised_cost_tensor(ensemble, ensemble, r_loc)
+        assert np.max(np.abs(cost_tensor.dat.data[:])) < 1e-5
 
 
-def test_coarsening_cost_function():
+def test_coarsening_cost_tensor():
 
     mesh = UnitIntervalMesh(1)
 
@@ -73,15 +72,11 @@ def test_coarsening_cost_function():
     f = Function(V)
     f.dat.data[0] = 2
     ensemble.append(f)
+    f = Function(V)
+    f.dat.data[0] = 2
+    ensemble.append(f)
 
-    cost_funcs = []
-    for i in range(2):
-        cost_funcs.append([])
-        for j in range(2):
-            f = Function(V)
-            cost_funcs[i].append(f)
-
-    # inject then prolong to work out actual cost func on finer mesh
+    # inject then prolong to work out actual cost tensor on finer mesh
     act = Function(V)
     act.dat.data[0] = 1.0
     inj = Function(Vc)
@@ -91,9 +86,11 @@ def test_coarsening_cost_function():
 
     # this will aggregate the difference in one finer subcell between the one coarse cell
     r_loc = 1
-    cost_funcs = generate_localised_cost_funcs(ensemble, ensemble, cost_funcs, r_loc)
-    assert np.max(np.abs(cost_funcs[1][0].dat.data[:] - inj_pro.dat.data[:])) < 1e-5
-    assert np.max(np.abs(cost_funcs[0][1].dat.data[:] - inj_pro.dat.data[:])) < 1e-5
+    cost_tensor = generate_localised_cost_tensor(ensemble, ensemble, r_loc)
+    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - inj_pro.dat.data[:])) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - inj_pro.dat.data[:])) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - inj_pro.dat.data[:])) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - inj_pro.dat.data[:])) < 1e-5
 
 
 def test_localisation_diff():
@@ -110,21 +107,40 @@ def test_localisation_diff():
     f = Function(V).assign(2)
     ensemble.append(f)
 
-    cost_funcs = []
-    for i in range(2):
-        cost_funcs.append([])
-        for j in range(2):
-            f = Function(V)
-            cost_funcs[i].append(f)
+    r_loc = 0
+    cost_tensor = generate_localised_cost_tensor(ensemble, ensemble, r_loc)
+    assert cost_tensor.dat.data[0, 0, 0] == 0
+    assert cost_tensor.dat.data[0, 0, 1] == 1
+    assert cost_tensor.dat.data[0, 1, 0] == 1
+    assert cost_tensor.dat.data[0, 1, 1] == 0
+
+
+def test_localisation_cg_proj():
+
+    mesh = UnitIntervalMesh(1)
+
+    mesh_hierarchy = MeshHierarchy(mesh, 2)
+
+    V = FunctionSpace(mesh_hierarchy[0], 'CG', 1)
+
+    ensemble = []
+    f = Function(V).assign(1)
+    ensemble.append(f)
+    f = Function(V).assign(1)
+    ensemble.append(f)
+
+    ensemble2 = []
+    f = Function(V)
+    ensemble2.append(f)
+    f = Function(V)
+    ensemble2.append(f)
 
     r_loc = 0
-    cost_funcs = generate_localised_cost_funcs(ensemble, ensemble, cost_funcs, r_loc)
-    assert cost_funcs[0][0].dat.data[0] == 0
-    assert cost_funcs[0][1].dat.data[0] == 1
-    assert cost_funcs[1][0].dat.data[0] == 1
-    assert cost_funcs[1][1].dat.data[0] == 0
-    assert len(cost_funcs) == 2
-    assert len(cost_funcs[0]) == 2
+    cost_tensor = generate_localised_cost_tensor(ensemble, ensemble2, r_loc)
+    assert cost_tensor.dat.data[0, 0, 0] == 1
+    assert cost_tensor.dat.data[0, 0, 1] == 1
+    assert cost_tensor.dat.data[0, 1, 0] == 1
+    assert cost_tensor.dat.data[0, 1, 1] == 1
 
 
 if __name__ == "__main__":

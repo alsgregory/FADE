@@ -40,6 +40,32 @@ def test_ensemble_transform_mean_preserving():
     assert np.max(new_ensemble[1].dat.data[:] - 1.0) < 1e-5
 
 
+def test_transform():
+
+    mesh = UnitIntervalMesh(1)
+
+    V = FunctionSpace(mesh, 'DG', 0)
+
+    # no coarsening localisation needed
+    r_loc = 0
+
+    weights = []
+    ensemble = []
+    f = Function(V).assign(0.5)
+    ensemble.append(f)
+    f = Function(V).assign(1.0)
+    ensemble.append(f)
+    g = Function(V).assign(0.25)
+    weights.append(g)
+    g = Function(V).assign(0.75)
+    weights.append(g)
+
+    new_ensemble = ensemble_transform_update(ensemble, weights, r_loc)
+
+    assert new_ensemble[0].dat.data[0] == 0.75
+    assert new_ensemble[1].dat.data[0] == 1.0
+
+
 if __name__ == "__main__":
     import os
     import pytest

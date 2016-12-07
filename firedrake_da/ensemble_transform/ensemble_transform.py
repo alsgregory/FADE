@@ -52,14 +52,9 @@ def ensemble_transform_update(ensemble, weights, r_loc):
     # preallocate new ensemble
     with timed_stage("Preallocating functions"):
         new_ensemble = []
-        cost_funcs = []
         for i in range(n):
             f = Function(fs)
             new_ensemble.append(f)
-            cost_funcs.append([])
-            for j in range(n):
-                g = Function(fs)
-                cost_funcs[i].append(g)
 
     # define even weights
     weights2 = []
@@ -69,7 +64,7 @@ def ensemble_transform_update(ensemble, weights, r_loc):
 
     # ensemble transform implementation
     kernel_transform(ensemble, ensemble, weights, weights2,
-                     new_ensemble, cost_funcs, r_loc)
+                     new_ensemble, r_loc)
 
     # check that components have the same mean
     with timed_stage("Checking posterior mean consistency"):

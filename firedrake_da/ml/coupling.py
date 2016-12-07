@@ -103,8 +103,6 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
         new_ensemble_c = []
         new_ensemble_f = []
         int_ensemble_c = []
-        cost_funcs_c = []
-        cost_funcs_f = []
         for i in range(n):
             f = Function(fsc)
             new_ensemble_c.append(f)
@@ -112,13 +110,6 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
             new_ensemble_f.append(g)
             h = Function(fsc)
             int_ensemble_c.append(h)
-            cost_funcs_c.append([])
-            cost_funcs_f.append([])
-            for j in range(n):
-                yc = Function(fsc)
-                cost_funcs_c[i].append(yc)
-                yf = Function(fsf)
-                cost_funcs_f[i].append(yf)
 
     # define even weights
     even_weights_c = []
@@ -149,11 +140,11 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
 
     with timed_stage("Coupling between weighted coarse and fine ensembles"):
         kernel_transform(ensemble_c, inj_ensemble_f, weights_c,
-                         inj_weights_f, int_ensemble_c, cost_funcs_c, r_loc_c)
+                         inj_weights_f, int_ensemble_c, r_loc_c)
 
     with timed_stage("Finer ensemble transform"):
         kernel_transform(ensemble_f, ensemble_f, weights_f,
-                         even_weights_f, new_ensemble_f, cost_funcs_f, r_loc_f)
+                         even_weights_f, new_ensemble_f, r_loc_f)
 
     with timed_stage("Coupling weighted intermediate ensemble and transformed finer ensemble"):
         # inject transformed finer ensemble
@@ -163,13 +154,8 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
             inj_new_ensemble_f.append(f)
             inject(new_ensemble_f[i], inj_new_ensemble_f[i])
 
-        # default coarse cost functions
-        for i in range(n):
-            for j in range(n):
-                cost_funcs_c[i][j].assign(0)
-
         kernel_transform(int_ensemble_c, inj_new_ensemble_f,
-                         inj_weights_f, even_weights_c, new_ensemble_c, cost_funcs_c, r_loc_c)
+                         inj_weights_f, even_weights_c, new_ensemble_c, r_loc_c)
 
     # check that components have the same mean
     with timed_stage("Checking posterior mean consistency"):
