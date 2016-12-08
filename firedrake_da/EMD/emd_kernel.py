@@ -178,7 +178,23 @@ def get_feature_str(n):
     return feature_str
 
 
-def generate_localised_cost_tensor(ensemble, ensemble2, r_loc):
+def get_cost_func_kernel(n):
+
+    cost_func_str = " "
+    for i in range(n):
+        for j in range(n):
+            cost_func_str += "cost_tensor[k][" + str((i * n) + j) + "]=(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0])*(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0]);\n"
+
+    cost_func_kernel = """
+    for (int k=0;k<input_f_0.dofs;k++){
+    """ + cost_func_str + """
+    }
+    """
+
+    return cost_func_kernel
+
+
+def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
 
     """ Computes a (localised) cost tensor function for the squared different between two ensembles
 
@@ -236,18 +252,32 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc):
             ensemble_f.dat.data[:, i] = ensemble[i].dat.data
             ensemble2_f.dat.data[:, i] = ensemble2[i].dat.data
 
-    # compute unlocalised DG cost function tensor
-    nc = ensemble[0].function_space().dof_dset.size
-    i, j = indices(2)
-    with timed_stage("Creating the cost tensor"):
-        f = ((IndexSum(IndexSum(Product(nc * phi[i, j], Product(ensemble_f[i], ensemble_f[i])),
-                                MultiIndex((i,))), MultiIndex((j,))) * dx) +
-             (IndexSum(IndexSum(Product(nc * phi[i, j], Product(ensemble2_f[j], ensemble2_f[j])),
-                                MultiIndex((i,))), MultiIndex((j,))) * dx) -
-             (IndexSum(IndexSum(2 * nc * Product(phi[i, j], Product(ensemble_f[i], ensemble2_f[j])),
-                                MultiIndex((i,))), MultiIndex((j,))) * dx))
+    # compute unlocalised DG cost function tensor -> NB: !at the moment use kernel approach!
 
-        cost_tensor = assemble(f)
+    if option == "assembly":
+
+        nc = ensemble[0].function_space().dof_dset.size
+        i, j = indices(2)
+        with timed_stage("Creating the cost tensor"):
+            f = ((IndexSum(IndexSum(Product(nc * phi[i, j], Product(ensemble_f[i], ensemble_f[i])),
+                                    MultiIndex((i,))), MultiIndex((j,))) * dx) +
+                 (IndexSum(IndexSum(Product(nc * phi[i, j], Product(ensemble2_f[j], ensemble2_f[j])),
+                                    MultiIndex((i,))), MultiIndex((j,))) * dx) -
+                 (IndexSum(IndexSum(2 * nc * Product(phi[i, j], Product(ensemble_f[i], ensemble2_f[j])),
+                                    MultiIndex((i,))), MultiIndex((j,))) * dx))
+
+            cost_tensor = assemble(f)
+    
+    if option == "kernel":
+
+        with timed_stage("Creating the cost tensor"):
+            cost_tensor_kernel = get_cost_func_kernel(n)
+            cost_tensor = Function(tfs)
+            Dict = {}
+            Dict = update_Dictionary(Dict, ensemble, "input_f_", "READ")
+            Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
+            Dict.update({"cost_tensor":(cost_tensor, WRITE)})
+            par_loop(cost_tensor_kernel, dx, Dict)
 
     # assign to functions from tensor
     fs = ensemble[0].function_space()
@@ -292,7 +322,7 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc):
     return cost_tensor
 
 
-def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc):
+def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, option="kernel"):
 
     """ Carries out a coupling transform using kernels
 
@@ -320,7 +350,7 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc):
     emd_k = get_emd_kernel(len(ensemble))
 
     # generate cost funcs
-    cost_tensor = generate_localised_cost_tensor(ensemble, ensemble2, r_loc)
+    cost_tensor = generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option)
 
     # make dictionary
     Dict = {}
