@@ -16,7 +16,7 @@ def test_coupling_mean_preserving():
 
     mesh_hierarchy = MeshHierarchy(mesh, 3)
     r_loc = 2
-    r_loc_func = 2
+    r_loc_cost = 0
 
     coord = tuple([np.array([0.5])])
 
@@ -40,11 +40,9 @@ def test_coupling_mean_preserving():
     weights_f = weight_update(ensemble_f, observation_operator_f, coord, obs, sigma, r_loc)
 
     # compute ensemble transform - should be 1.0's
-    lfc = LocalisationFunctions(fsc, r_loc_func)
-    lff = LocalisationFunctions(fsf, r_loc_func)
     new_ensemble_c, new_ensemble_f = seamless_coupling_update(ensemble_c, ensemble_f,
-                                                              weights_c, weights_f,
-                                                              lfc, lff)
+                                                              weights_c, weights_f, r_loc_cost,
+                                                              r_loc_cost)
 
     assert np.max(new_ensemble_c[0].dat.data[:] - 1.0) < 1e-5
     assert np.max(new_ensemble_c[1].dat.data[:] - 1.0) < 1e-5

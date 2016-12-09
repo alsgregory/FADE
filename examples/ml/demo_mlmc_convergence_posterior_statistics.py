@@ -50,9 +50,6 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs, sigma):
         ns[i] = n
         coarse = []
         fine = []
-        r_loc_func = 0
-        lc = LocalisationFunctions(fs_hierarchy[i], r_loc_func)
-        lf = LocalisationFunctions(fs_hierarchy[i + 1], r_loc_func)
         for k in range(n):
             xc = np.random.normal(0, 1, 1)[0] + means[i]
             xf = np.random.normal(0, 1, 1)[0] + means[i + 1]
@@ -69,7 +66,8 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs, sigma):
                                                         fine,
                                                         weights_c,
                                                         weights_f,
-                                                        lc, lf)
+                                                        r_loc,
+                                                        r_loc)
 
         # put into ensemble
         for k in range(n):

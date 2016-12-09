@@ -16,7 +16,7 @@ def test_ensemble_transform_mean_preserving():
 
     mesh_hierarchy = MeshHierarchy(mesh, 3)
     r_loc = 2
-    r_loc_func = 2
+    r_loc_cost = 0
 
     coord = tuple([np.array([0.5])])
 
@@ -34,11 +34,36 @@ def test_ensemble_transform_mean_preserving():
     weights = weight_update(ensemble, observation_operator, coord, obs, sigma, r_loc)
 
     # compute ensemble transform - should be 1.0's
-    lf = LocalisationFunctions(fs, r_loc_func)
-    new_ensemble = ensemble_transform_update(ensemble, weights, lf)
+    new_ensemble = ensemble_transform_update(ensemble, weights, r_loc_cost)
 
     assert np.max(new_ensemble[0].dat.data[:] - 1.0) < 1e-5
     assert np.max(new_ensemble[1].dat.data[:] - 1.0) < 1e-5
+
+
+def test_transform():
+
+    mesh = UnitIntervalMesh(1)
+
+    V = FunctionSpace(mesh, 'DG', 0)
+
+    # no coarsening localisation needed
+    r_loc = 0
+
+    weights = []
+    ensemble = []
+    f = Function(V).assign(0.5)
+    ensemble.append(f)
+    f = Function(V).assign(1.0)
+    ensemble.append(f)
+    g = Function(V).assign(0.25)
+    weights.append(g)
+    g = Function(V).assign(0.75)
+    weights.append(g)
+
+    new_ensemble = ensemble_transform_update(ensemble, weights, r_loc)
+
+    assert new_ensemble[0].dat.data[0] == 0.75
+    assert new_ensemble[1].dat.data[0] == 1.0
 
 
 if __name__ == "__main__":
