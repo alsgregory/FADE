@@ -138,19 +138,8 @@ def CoarseningLocalisation(f, r_loc):
     if r_loc < 0 or (lvl - r_loc) < 0:
         raise ValueError('radius of localisation needs to be from 0 to max level of hierarchy')
 
-    # check for tensor
-    dim = len(shape(f))
-    d = fs.ufl_element().degree()
-    family = fs.ufl_element().family()
-
-    # make coarse function space
-    if dim == 2:
-        cfs = TensorFunctionSpace(hierarchy[lvl - r_loc], family, d, shape(f))
-    else:
-        cfs = FunctionSpace(hierarchy[lvl - r_loc], family, d)
-
     # inject down
-    fc = Function(cfs)
+    fc = Function(FunctionSpace(hierarchy[lvl - r_loc], fs.ufl_element()))
 
     try:
         inject(f, fc)
