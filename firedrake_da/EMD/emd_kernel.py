@@ -1,5 +1,8 @@
 """ Functions generating an Earth Movers Distance kernel for the ensemble_transform_update and
-seamless_coupling_update """
+seamless_coupling_update.
+
+The C code used in the emd_kernels is courtesy of:
+Y. Rubner, C. Tomasi, and L. J. Guibas. The earth mover’s distance as a metric for image retrieval. IJCV, 2000. """
 
 from __future__ import absolute_import
 
