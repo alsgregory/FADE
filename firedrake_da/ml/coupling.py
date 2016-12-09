@@ -1,6 +1,5 @@
 """ a kernel implementation of a (localised) seamless update from a coupling between
-two weighted ensembles (coarse and fine) to two coupled evenly weighted ensembles.
-NB: Two ensembles have to belong to the same hierarchy """
+two weighted ensembles (coarse and fine) to two coupled evenly weighted ensembles """
 
 from __future__ import absolute_import
 
@@ -15,12 +14,6 @@ from firedrake_da.EMD.emd_kernel import *
 import numpy as np
 
 from pyop2.profiling import timed_stage
-
-
-"""" The 1D couplings are still done using emd here and not the cheap algorithm. To switch to this
-needs the ability to sort both finer subcells that are in a coarse subcell. Thus we need to pick out
-the indicies of the finer subcells and sort them according to the sorted coarse cell at the start
-of each cheap coupling """
 
 
 def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc_c, r_loc_f):
