@@ -38,12 +38,7 @@ def CoarseningLocalisation(f, r_loc):
 
     # inject down
     fc = Function(FunctionSpace(hierarchy[lvl - r_loc], fs.ufl_element()))
-
-    try:
-        inject(f, fc)
-    except ValueError:
-        raise Exception("Unfortunately this localisation is only compatible with Tensor or " +
-                        "standard FunctionSpaces")
+    inject(f, fc)
 
     # prolong back again
     f_new = Function(fs)
