@@ -2,7 +2,9 @@
 seamless_coupling_update.
 
 The C code used in the emd_kernels is courtesy of:
-Y. Rubner, C. Tomasi, and L. J. Guibas. The earth mover’s distance as a metric for image retrieval. IJCV, 2000. """
+Y. Rubner, C. Tomasi, and L. J. Guibas. The earth movers distance as a metric for image retrieval. IJCV, 2000. """
+
+from __future__ import division
 
 from __future__ import absolute_import
 
@@ -43,6 +45,7 @@ class emd_kernel_generation(object):
         # get output string
         output_str = self.__get_output_str()
 
+        # generate emd kernel
         self.emd_kernel = """ int n=%(size_n)s;
         for (int k=0;k<input_f_0.dofs;k++){
             float matrix_identity[%(size_n)s][%(size_n)s];
@@ -81,6 +84,7 @@ class emd_kernel_generation(object):
         }
         """
 
+        # replace n in kernel with constant
         self.emd_kernel = self.emd_kernel % {"size_n": self.n}
 
         super(emd_kernel_generation, self).__init__()
@@ -167,7 +171,7 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
         :type ensemble2: list / tuple
 
         :arg r_loc: Radius of coarsening localisation for the cost tensor
-        :type r_loc: int 
+        :type r_loc: int
 
     """
 
@@ -176,7 +180,7 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
 
     mesh = ensemble[0].function_space().mesh()
 
-    # get deg and fam of function space
+    # get degree and family of function space
     deg = ensemble[0].function_space().ufl_element().degree()
     fam = ensemble[0].function_space().ufl_element().family()
 
@@ -184,22 +188,9 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
     assert deg == ensemble2[0].function_space().ufl_element().degree()
     assert fam == ensemble2[0].function_space().ufl_element().family()
 
-    # if in CG project to DG
-    if fam == 'CG' or fam == 'Lagrange':
-        with timed_stage("Projecting from CG to DG"):
-            fs = FunctionSpace(mesh, 'DG', deg)
-            for i in range(n):
-                f = Function(fs)
-                project(ensemble[i], f)
-                ensemble[i] = f
-                f = Function(fs)
-                project(ensemble2[i], f)
-                ensemble2[i] = f
-
     # make tensor function space and vector function space
-    tfs = TensorFunctionSpace(mesh, 'DG', deg, (n, n))
-    tfsp = TensorFunctionSpace(mesh, fam, deg, (n, n))
-    vfs = VectorFunctionSpace(mesh, 'DG', deg, dim=n)
+    tfs = TensorFunctionSpace(mesh, fam, deg, (n, n))
+    vfs = VectorFunctionSpace(mesh, fam, deg, dim=n)
 
     # make test function and ensemble functions
     phi = TestFunction(tfs)
@@ -214,8 +205,7 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
             ensemble_f.dat.data[:, i] = ensemble[i].dat.data
             ensemble2_f.dat.data[:, i] = ensemble2[i].dat.data
 
-    # compute unlocalised DG cost function tensor -> NB: !at the moment use kernel approach!
-
+    # compute unlocalised cost function tensor
     if option == "assembly":
 
         nc = ensemble[0].function_space().dof_dset.size
@@ -238,48 +228,12 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
             Dict = {}
             Dict = update_Dictionary(Dict, ensemble, "input_f_", "READ")
             Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
-            Dict.update({"cost_tensor":(cost_tensor, WRITE)})
+            Dict.update({"cost_tensor": (cost_tensor, WRITE)})
             par_loop(cost_tensor_kernel, dx, Dict)
-
-    # assign to functions from tensor
-    fs = ensemble[0].function_space()
-    cost_funcs = []
-    if n == 1:
-        cost_funcs.append([])
-        f = Function(fs)
-        f.dat.data[:] = cost_tensor.dat.data[:]
-        cost_funcs[0].append(f)
-
-    else:
-        for i in range(n):
-            cost_funcs.append([])
-            for j in range(n):
-                f = Function(fs)
-                f.dat.data[:] = cost_tensor.dat.data[:, i, j]
-                cost_funcs[i].append(f)
 
     # carry out coarsening localisation
     with timed_stage("Coarsening localisation"):
-        for i in range(n):
-            for j in range(n):
-                cost_funcs[i][j] = CoarseningLocalisation(cost_funcs[i][j], r_loc)
-
-    # put basis coefficients back to tensor and project back to old function space
-    if n == 1:
-        cost_tensor.dat.data[:] = cost_funcs[0][0].dat.data[:]
-        if fam == 'CG' or fam == 'Lagrange':
-            with timed_stage("Projecting from DG to CG"):
-                cost_tensor_p = Function(tfsp)
-                cost_tensor_p.project(cost_tensor)
-
-    else:
-        for i in range(n):
-            for j in range(n):
-                cost_tensor.dat.data[:, i, j] = cost_funcs[i][j].dat.data[:]
-        if fam == 'CG' or fam == 'Lagrange':
-            with timed_stage("Projecting from DG to CG"):
-                cost_tensor_p = Function(tfsp)
-                cost_tensor_p.project(cost_tensor)
+        cost_tensor = CoarseningLocalisation(cost_tensor, r_loc)
 
     return cost_tensor
 
@@ -303,7 +257,7 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
         :arg out_func: A list of functions to output the transform ensemble to
         :type out_func: list / tuple
 
-        :arg r_loc: Radius of coarsening localisation for the cost function
+        :arg r_loc: Radius of coarsening localisation for the cost tensor
         :type r_loc: int
 
     """
@@ -317,16 +271,16 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
     # make dictionary
     Dict = {}
 
-    # update with functions
+    # update with first functions
     Dict = update_Dictionary(Dict, ensemble, "input_f_", "READ")
 
-    # update with functions
+    # update with second functions
     Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
 
-    # update with weights
+    # update with first weights
     Dict = update_Dictionary(Dict, weights, "input_weight_", "READ")
 
-    # update with weights
+    # update with second weights
     Dict = update_Dictionary(Dict, weights2, "input_weight2_", "READ")
 
     # update with output functions
