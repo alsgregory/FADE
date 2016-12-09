@@ -11,55 +11,6 @@ import numpy as np
 import pytest
 
 
-def test_localisation_single_cell_dg0():
-
-    mesh = UnitIntervalMesh(1)
-
-    fs = FunctionSpace(mesh, 'DG', 0)
-
-    r_locs = [0, 1, 2]
-
-    index = 0
-
-    for r in r_locs:
-
-        l = Localisation(fs, r, index)
-        assert l.dat.data[index] == 1.0
-
-
-def test_localisation_single_cell_cg1():
-
-    mesh = UnitIntervalMesh(1)
-
-    fs = FunctionSpace(mesh, 'CG', 1)
-
-    r_locs = [0, 1, 2]
-
-    index = 0
-
-    for r in r_locs:
-
-        l = Localisation(fs, r, index)
-        assert l.dat.data[index] == 1.0
-
-
-def test_localisation_double_cell_dg0():
-
-    mesh = UnitIntervalMesh(2)
-
-    fs = FunctionSpace(mesh, 'DG', 0)
-
-    r_locs = [0, 1, 2]
-
-    index = 0
-
-    for r in r_locs:
-
-        l = Localisation(fs, r, index)
-        assert l.dat.data[index] == 1.0
-        assert np.abs(l.dat.data[1] - (((2 ** r) - 1) / (2 ** r))) < 1e-5
-
-
 def test_coarsening_localisation_single_cell_dg0():
 
     mesh = UnitIntervalMesh(1)
@@ -75,6 +26,25 @@ def test_coarsening_localisation_single_cell_dg0():
     WLocNew = CoarseningLocalisation(WLoc, r_loc)
 
     assert norm(assemble(WLoc - WLocNew)) == 0
+
+
+def test_coarsening_localisation_single_cell_dg0_2():
+
+    mesh = UnitIntervalMesh(1)
+
+    mesh_hierarchy = MeshHierarchy(mesh, 1)
+
+    r_loc = 1
+
+    fs_hierarchy = tuple([FunctionSpace(m, 'DG', 0) for m in mesh_hierarchy])
+
+    WLoc = Function(fs_hierarchy[1])
+    WLoc.dat.data[0] = 1.0
+
+    WLocNew = CoarseningLocalisation(WLoc, r_loc)
+
+    assert np.abs(0.5 - WLocNew.dat.data[0]) < 1e-5
+    assert np.abs(0.5 - WLocNew.dat.data[1]) < 1e-5
 
 
 def test_coarsening_localisation_no_localisation():
