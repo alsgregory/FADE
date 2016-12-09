@@ -1,4 +1,5 @@
-""" demo for the posterior convergence of a single ensemble transform update step on a single cell """
+""" demo for the algorithm runtime growth of a single ensemble transform update step
+on a single cell """
 
 from __future__ import division
 
@@ -37,7 +38,7 @@ time_rloc_0 = np.zeros(len(ns))
 time_rloc_1 = np.zeros(len(ns))
 
 
-# define the kalman update step
+# define the ensemble transform update step
 def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
 
     # generate ensemble
