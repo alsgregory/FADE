@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from firedrake import *
 
 from firedrake_da.localisation import *
+from firedrake_da.utils import *
 
 import numpy as np
 
@@ -16,166 +17,124 @@ from pyop2.profiling import timed_stage
 from ufl.classes import IndexSum, MultiIndex, Product
 
 
-# NOTE: Only need to generate these kernels (well just EMD_KERNEL AS THE REST WILL FOLLOW) once at the start of the assimilation, and just use this for whole process. Aslong as the labels for dictionary stay the same!
+class emd_kernel_generation(object):
 
+    def __init__(self, n):
 
-def update_Dictionary(Dict, ensemble, generic_label, access):    
+        """ Generates the kernel needed for the emd transform using strings
+            for different components
 
-    """ This updates a dictionary with an ensemble of functions and their labels
+            :arg n: Size of ensemble
+            :type n: int
 
-        :arg Dict: Dictionary to update
-        :type Dict: dict
+        """
 
-        :arg ensemble: ensemble of functions that need to be labeled
-        :type ensemble: list / tuple
+        self.n = n
 
-        :arg generic_label: The generic prefix of the function label, that then gets numbered
-        :type generic_label: str
+        # get cost string
+        cost_str = self.__get_cost_str()
 
-        :arg access: Access level of functions in ensemble
-        :type access: str. Either READ, WRITE or RW
+        # get feature string
+        feature_str = self.__get_feature_str()
 
-    """
+        # get output string
+        output_str = self.__get_output_str()
 
-    n = len(ensemble)
-
-    if type(Dict) is not dict:
-        raise ValueError("Dictionary to update is not of dict type")
-
-    if type(generic_label) is not str:
-        raise ValueError("label for ensemble functions must be of str type")
-
-    access_opts = ["READ", "WRITE", "RW"]
-    if (type(access) is not str) or (access not in access_opts):
-        raise ValueError("Access option is not of str type or an available access level")
-
-    for i in range(n):
-
-        member_label = generic_label + str(i)
-        if access == "READ":
-            Dict.update({member_label:(ensemble[i], READ)})
-        if access == "WRITE":
-            Dict.update({member_label:(ensemble[i], WRITE)})
-        if access == "RW":
-            Dict.update({member_label:(ensemble[i], RW)})
-
-    return Dict
-
-
-def get_emd_kernel(n):
-
-    """ Generates an emd kernel for functions in Firedrake
-
-        :arg n: size of ensembles
-        :type n: int
-
-    """
-
-    cost_str = get_cost_str(n)
-
-    # get feature string
-    feature_str = get_feature_str(n)
-
-    # get output string
-    output_str = get_output_str(n)
-
-    emd_kernel = """ int n=%(size_n)s;
-    for (int k=0;k<input_f_0.dofs;k++){
-        float matrix_identity[%(size_n)s][%(size_n)s];
-        float _COST[%(size_n)s][%(size_n)s];
-        float _M[%(size_n)s][%(size_n)s];
-        for (int i=0;i<n;i++){
-            for (int j=0;j<n;j++){
-                _M[i][j]=0.0;
+        self.emd_kernel = """ int n=%(size_n)s;
+        for (int k=0;k<input_f_0.dofs;k++){
+            float matrix_identity[%(size_n)s][%(size_n)s];
+            float _COST[%(size_n)s][%(size_n)s];
+            float _M[%(size_n)s][%(size_n)s];
+            for (int i=0;i<n;i++){
+                for (int j=0;j<n;j++){
+                    _M[i][j]=0.0;
+                }
             }
-        }
-        float dist(feature_t *F1, feature_t *F2) { return _COST[*F1][*F2]; }
-        """ + cost_str + """
-        int         flowSize=%(size_n)s+%(size_n)s-1;
-        """ + feature_str + """
-        signature_t s1 = { %(size_n)s, f1, w1},
-                    s2 = { %(size_n)s, f2, w2};
-        flow_t      flow[flowSize];
-        float e;
-        float F[flowSize];
-        int ip[flowSize];
-        int jp[flowSize];
-        e = emd(&s1, &s2, dist, flow, &flowSize, F, ip, jp);
-        for (int i=0;i<flowSize;i++){
-            int xpi=ip[i];
-            int xpj=jp[i];
-            _M[xpi][xpj]=0.0;
-            _M[xpi][xpj]+=F[i];
-        }
-        for (int i=0;i<n;i++){
-            for (int j=0;j<n;j++){
-                matrix_identity[i][j]=0.0;
-                matrix_identity[i][j]+=_M[i][j]*(1.0/w2[j]);
+            float dist(feature_t *F1, feature_t *F2) { return _COST[*F1][*F2]; }
+            """ + cost_str + """
+            int         flowSize=%(size_n)s+%(size_n)s-1;
+            """ + feature_str + """
+            signature_t s1 = { %(size_n)s, f1, w1},
+                        s2 = { %(size_n)s, f2, w2};
+            flow_t      flow[flowSize];
+            float e;
+            float F[flowSize];
+            int ip[flowSize];
+            int jp[flowSize];
+            e = emd(&s1, &s2, dist, flow, &flowSize, F, ip, jp);
+            for (int i=0;i<flowSize;i++){
+                int xpi=ip[i];
+                int xpj=jp[i];
+                _M[xpi][xpj]=0.0;
+                _M[xpi][xpj]+=F[i];
             }
+            for (int i=0;i<n;i++){
+                for (int j=0;j<n;j++){
+                    matrix_identity[i][j]=0.0;
+                    matrix_identity[i][j]+=_M[i][j]*(1.0/w2[j]);
+                }
+            }
+        """ + output_str + """
         }
-    """ + output_str + """
-    }
-    """
-    emd_kernel = emd_kernel % {"size_n": n}
+        """
 
-    return emd_kernel
+        self.emd_kernel = self.emd_kernel % {"size_n": self.n}
 
+        super(emd_kernel_generation, self).__init__()
 
-def get_cost_str(n):
+    def __get_cost_str(self):
 
-    cost_str = " "
-    for i in range(n):
-        for j in range(n):
-            cost_str += "_COST[" + str(i) + "][" + str(j) + "]=cost_tensor[k][" + str((i * n) + j) + "];\n"
+        cost_str = " "
+        for i in range(self.n):
+            for j in range(self.n):
+                cost_str += "_COST[" + str(i) + "][" + str(j) + "]=cost_tensor[k][" + str((i * self.n) + j) + "];\n"
 
-    return cost_str
+        return cost_str
 
+    def __get_output_str(self):
 
-def get_output_str(n):
+        output_str = ""
+        for i in range(self.n):
+            output_str += "output_f_" + str(i) + "[k][0] = "
+            for j in range(self.n):
+                output_str += "(matrix_identity[" + str(j) + "][" + str(i) + "]*input_f_" + str(j) + "[k][0])"
+                if j < self.n - 1:
+                    output_str += "+"
+                else:
+                    output_str += ";\n"
 
-    output_str = ""
-    for i in range(n):
-        output_str += "output_f_" + str(i) + "[k][0] = "
-        for j in range(n):
-            output_str += "(matrix_identity[" + str(j) + "][" + str(i) + "]*input_f_" + str(j) + "[k][0])"
-            if j < n - 1:
-                output_str += "+"
+        return output_str
+
+    def __get_feature_str(self):
+
+        feature_str = " "
+        feature_str += "float w1[%(size_n)s] = {"
+        for i in range(self.n):
+            if i < self.n - 1:
+                feature_str += "input_weight_" + str(i) + "[k][0],"
             else:
-                output_str += ";\n"
+                feature_str += "input_weight_" + str(i) + "[k][0]"
+        feature_str += "};\n float w2[%(size_n)s] = {"
+        for i in range(self.n):
+            if i < self.n - 1:
+                feature_str += "input_weight2_" + str(i) + "[k][0],"
+            else:
+                feature_str += "input_weight2_" + str(i) + "[k][0]"
+        feature_str += "};\n feature_t f1[%(size_n)s] = {"
+        for i in range(self.n):
+            if i < self.n - 1:
+                feature_str += str(i) + ","
+            else:
+                feature_str += str(i)
+        feature_str += "};\n feature_t f2[%(size_n)s] = {"
+        for i in range(self.n):
+            if i < self.n - 1:
+                feature_str += str(i) + ","
+            else:
+                feature_str += str(i)
+        feature_str += "};"
 
-    return output_str
-
-
-def get_feature_str(n):
-
-    feature_str = " "
-    feature_str += "float w1[%(size_n)s] = {"
-    for i in range(n):
-        if i < n - 1:
-            feature_str += "input_weight_" + str(i) + "[k][0],"
-        else:
-            feature_str += "input_weight_" + str(i) + "[k][0]"
-    feature_str += "};\n float w2[%(size_n)s] = {"
-    for i in range(n):
-        if i < n - 1:
-            feature_str += "input_weight2_" + str(i) + "[k][0],"
-        else:
-            feature_str += "input_weight2_" + str(i) + "[k][0]"
-    feature_str += "};\n feature_t f1[%(size_n)s] = {"
-    for i in range(n):
-        if i < n - 1:
-            feature_str += str(i) + ","
-        else:
-            feature_str += str(i)
-    feature_str += "};\n feature_t f2[%(size_n)s] = {"
-    for i in range(n):
-        if i < n - 1:
-            feature_str += str(i) + ","
-        else:
-            feature_str += str(i)
-    feature_str += "};"
-
-    return feature_str
+        return feature_str
 
 
 def get_cost_func_kernel(n):
@@ -267,7 +226,7 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
                                     MultiIndex((i,))), MultiIndex((j,))) * dx))
 
             cost_tensor = assemble(f)
-    
+
     if option == "kernel":
 
         with timed_stage("Creating the cost tensor"):
@@ -347,7 +306,7 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
     """
 
     # generate emd kernel
-    emd_k = get_emd_kernel(len(ensemble))
+    emd_k = emd_kernel_generation(len(ensemble))
 
     # generate cost funcs
     cost_tensor = generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option)
@@ -383,5 +342,5 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
 
     # carry out par_loop -> out_func gets overwritten
     with timed_stage("Ensemble transform"):
-        par_loop(emd_k, dx, Dict, ldargs=ldargs, headers=headers,
+        par_loop(emd_k.emd_kernel, dx, Dict, ldargs=ldargs, headers=headers,
                  include_dirs=include_dirs)
