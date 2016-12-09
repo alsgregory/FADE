@@ -2,9 +2,9 @@ from __future__ import division
 
 from __future__ import absolute_import
 
-from firedrake import *
-
 from firedrake_da import *
+
+from firedrake import *
 
 import numpy as np
 
@@ -62,8 +62,7 @@ def test_coarsening_cost_tensor():
 
     mesh_hierarchy = MeshHierarchy(mesh, 1)
 
-    V = FunctionSpace(mesh_hierarchy[-1], 'DG', 0)
-    Vc = FunctionSpace(mesh_hierarchy[0], 'DG', 0)
+    V = FunctionSpace(mesh_hierarchy[1], 'DG', 0)
 
     ensemble = []
     f = Function(V)
@@ -76,21 +75,13 @@ def test_coarsening_cost_tensor():
     f.dat.data[0] = 2
     ensemble.append(f)
 
-    # inject then prolong to work out actual cost tensor on finer mesh
-    act = Function(V)
-    act.dat.data[0] = 1.0
-    inj = Function(Vc)
-    inject(act, inj)
-    inj_pro = Function(V)
-    prolong(inj, inj_pro)
-
     # this will aggregate the difference in one finer subcell between the one coarse cell
     r_loc = 1
     cost_tensor = generate_localised_cost_tensor(ensemble, ensemble, r_loc)
-    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - inj_pro.dat.data[:])) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - inj_pro.dat.data[:])) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - inj_pro.dat.data[:])) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - inj_pro.dat.data[:])) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - 0.5)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - 0.5)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - 0.5)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - 0.5)) < 1e-5
 
 
 def test_localisation_diff():
