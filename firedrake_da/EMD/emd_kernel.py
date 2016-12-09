@@ -231,9 +231,31 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
             Dict.update({"cost_tensor": (cost_tensor, WRITE)})
             par_loop(cost_tensor_kernel, dx, Dict)
 
-    # carry out coarsening localisation
+    # assign basis coefficients from cost tensor to functions and localise them
+    fs = ensemble[0].function_space()
+    cost_funcs = []
+    if n == 1:
+        f = Function(fs)
+        f.dat.data[:] = cost_tensor.dat.data[:]
+        cost_funcs.append([f])
+    else:
+        for i in range(n):
+            cost_funcs.append([])
+            for j in range(n):
+                f = Function(fs)
+                f.dat.data[:] = cost_tensor.dat.data[:, i, j]
+                cost_funcs[i].append(f)
+
+    # carry out coarsening localisation and put back into tensor
     with timed_stage("Coarsening localisation"):
-        cost_tensor = CoarseningLocalisation(cost_tensor, r_loc)
+        if n == 1:
+            x = CoarseningLocalisation(cost_funcs[0][0], r_loc)
+            cost_tensor.dat.data[:] = x.dat.data[:]
+        else:
+            for i in range(n):
+                for j in range(n):
+                    x = CoarseningLocalisation(cost_funcs[i][j], r_loc)
+                    cost_tensor.dat.data[:, i, j] = x.dat.data[:]
 
     return cost_tensor
 
