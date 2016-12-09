@@ -230,21 +230,24 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
             Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
             Dict.update({"cost_tensor": (cost_tensor, WRITE)})
             par_loop(cost_tensor_kernel, dx, Dict)
+            # evaluate kernel
+            cost_tensor.dat.data[:] += 0.0
 
     # assign basis coefficients from cost tensor to functions and localise them
     fs = ensemble[0].function_space()
     cost_funcs = []
-    if n == 1:
-        f = Function(fs)
-        f.dat.data[:] = cost_tensor.dat.data[:]
-        cost_funcs.append([f])
-    else:
-        for i in range(n):
-            cost_funcs.append([])
-            for j in range(n):
-                f = Function(fs)
-                f.dat.data[:] = cost_tensor.dat.data[:, i, j]
-                cost_funcs[i].append(f)
+    with timed_stage("Preallocating functions"):
+        if n == 1:
+            f = Function(fs)
+            f.dat.data[:] = cost_tensor.dat.data[:]
+            cost_funcs.append([f])
+        else:
+            for i in range(n):
+                cost_funcs.append([])
+                for j in range(n):
+                    f = Function(fs)
+                    f.dat.data[:] = cost_tensor.dat.data[:, i, j]
+                    cost_funcs[i].append(f)
 
     # carry out coarsening localisation and put back into tensor
     with timed_stage("Coarsening localisation"):
@@ -291,25 +294,26 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
     cost_tensor = generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option)
 
     # make dictionary
-    Dict = {}
+    with timed_stage("Updating dictionary"):
+        Dict = {}
 
-    # update with first functions
-    Dict = update_Dictionary(Dict, ensemble, "input_f_", "READ")
+        # update with first functions
+        Dict = update_Dictionary(Dict, ensemble, "input_f_", "READ")
 
-    # update with second functions
-    Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
+        # update with second functions
+        Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
 
-    # update with first weights
-    Dict = update_Dictionary(Dict, weights, "input_weight_", "READ")
+        # update with first weights
+        Dict = update_Dictionary(Dict, weights, "input_weight_", "READ")
 
-    # update with second weights
-    Dict = update_Dictionary(Dict, weights2, "input_weight2_", "READ")
+        # update with second weights
+        Dict = update_Dictionary(Dict, weights2, "input_weight2_", "READ")
 
-    # update with output functions
-    Dict = update_Dictionary(Dict, out_func, "output_f_", "WRITE")
+        # update with output functions
+        Dict = update_Dictionary(Dict, out_func, "output_f_", "WRITE")
 
-    # update with cost tensor
-    Dict.update({"cost_tensor":(cost_tensor, READ)})
+        # update with cost tensor
+        Dict.update({"cost_tensor":(cost_tensor, READ)})
 
     # current working directory
     p = os.getcwd()
@@ -323,3 +327,6 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
     with timed_stage("Ensemble transform"):
         par_loop(emd_k.emd_kernel, dx, Dict, ldargs=ldargs, headers=headers,
                  include_dirs=include_dirs)
+        # evaluate kernel
+        for i in range(len(ensemble)):
+            out_func[i].dat.data[:] += 0.0

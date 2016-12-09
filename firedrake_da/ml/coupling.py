@@ -105,13 +105,14 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
             int_ensemble_c.append(h)
 
     # define even weights
-    even_weights_c = []
-    even_weights_f = []
-    for k in range(n):
+    with timed_stage("Preallocating functions"):
+        even_weights_c = []
+        even_weights_f = []
         fc = Function(fsc).assign(1.0 / n)
-        even_weights_c.append(fc)
         ff = Function(fsf).assign(1.0 / n)
-        even_weights_f.append(ff)
+        for k in range(n):
+            even_weights_c.append(fc)
+            even_weights_f.append(ff)
 
     # inject fine weights and ensembles down to coarse mesh
     with timed_stage("Injecting finer ensemble / weights down to coarse mesh"):

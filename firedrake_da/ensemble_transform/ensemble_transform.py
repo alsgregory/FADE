@@ -57,10 +57,11 @@ def ensemble_transform_update(ensemble, weights, r_loc):
             new_ensemble.append(f)
 
     # define even weights
-    weights2 = []
-    for k in range(n):
+    with timed_stage("Preallocating functions"):
+        weights2 = []
         f = Function(fs).assign(1.0 / n)
-        weights2.append(f)
+        for k in range(n):
+            weights2.append(f)
 
     # ensemble transform implementation
     kernel_transform(ensemble, ensemble, weights, weights2,
