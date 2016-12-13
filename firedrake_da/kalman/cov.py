@@ -1,4 +1,4 @@
-""" covariance of ensemble of Firedrake functions """
+""" covariance of ensemble of Firedrake functions using a vector function """
 
 from __future__ import division
 
@@ -8,49 +8,40 @@ from firedrake import *
 
 import numpy as np
 
+from pyop2.profiling import timed_stage
 
-def Covariance(ensemble, fs_to_project_to="default"):
 
-    """ finds the covariance matrix, for basis coeffs of a certain projecting :class:`FunctionSpace`,
-        from an ensemble of :class:`Function`s
+def covariance(ensemble_f):
 
-        :arg ensemble: list of :class:`Function`s in the ensemble
-        :type ensemble: tuple / list
+    """ finds the covariance vector function, for basis coeffs of a
+        certain :class:`FunctionSpace`,
+        from an ensemble given by a vector :class:`Function`.
 
-        :arg fs_to_project_to: optional argument allowing user to calculate kalman gain in
-                               another :class:`FunctionSpace` then simply DG0
-        :type fs_to_project_to: :class:`FunctionSpace`
+        :arg ensemble: vector :class:`Function` representing ensemble (length n)
+        :type ensemble: :class:`Function`
 
     """
 
-    if len(ensemble) < 1:
-        raise ValueError('ensemble cannot be indexed')
-    mesh = ensemble[0].function_space().mesh()
+    mesh = ensemble_f.function_space().mesh()
 
-    n = len(ensemble)
+    # original space
+    fs = ensemble_f.function_space()
+    deg = fs.ufl_element().degree()
+    fam = fs.ufl_element().family()
 
-    if fs_to_project_to is "default":
-        fs_to_project_to = FunctionSpace(mesh, 'DG', 0)
+    nc = np.shape(ensemble_f.dat.data)[0]
+    if len(np.shape(ensemble_f.dat.data)) > 1:
+        n = np.shape(ensemble_f.dat.data)[1]
+    else:
+        n = 1
 
-    # project to function space for covariance estimation
-    in_ensemble = []
-    for f in ensemble:
-        in_func = Function(fs_to_project_to).project(f)
-        in_ensemble.append(in_func)
+    vfsm = VectorFunctionSpace(mesh, fam, deg, dim=nc)
 
-    """" derive covariance using basis coeffs """
+    with timed_stage("Preallocating functions"):
+        cov = Function(vfsm)
 
-    dim = [s for s in np.shape(in_ensemble[0].dat.data)]
-    dim.append(n)
-    n_shape = tuple(dim)
-    in_ensemble_dat = np.zeros(n_shape)
-    for i in range(n):
-        in_ensemble_dat[..., i] = in_ensemble[i].dat.data
+    # generate covariance
+    cov.dat.data[:] = np.cov(np.reshape(ensemble_f.dat.data[:],
+                                        ((nc, n))))
 
-    # functionality only exists for scalar functionals
-    if len(n_shape) > 2:
-        raise ValueError('only scalar functionals currently supported')
-
-    est_cov = np.cov(in_ensemble_dat)
-
-    return est_cov, in_ensemble_dat
+    return cov
