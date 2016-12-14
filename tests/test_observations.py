@@ -141,6 +141,48 @@ def test_update_observation_difference():
     assert np.max(np.abs(diff_2.dat.data - 1.0)) < 1e-5
 
 
+def test_no_observations():
+
+    mesh = UnitIntervalMesh(2)
+    fs = FunctionSpace(mesh, 'DG', 0)
+
+    coord = tuple([])
+
+    obs = tuple([])
+
+    obs_operator = Observations(fs)
+
+    obs_operator.update_observation_operator(coord, obs)
+
+    func = Function(fs).assign(1.0)
+    p = 2
+
+    diff = obs_operator.difference(func, p)
+    assert np.max(np.abs(diff.dat.data[:])) < 1e-5
+
+
+def test_no_observations_2():
+
+    mesh = UnitIntervalMesh(2)
+    fs = FunctionSpace(mesh, 'DG', 0)
+
+    coord = tuple([np.array([0.25])])
+    # cell number of the other cell
+    cell = mesh.locate_cell(np.array([0.75]))
+
+    obs = tuple([1.0])
+
+    obs_operator = Observations(fs)
+
+    obs_operator.update_observation_operator(coord, obs)
+
+    func = Function(fs).assign(1.0)
+    p = 2
+
+    diff = obs_operator.difference(func, p)
+    assert diff.dat.data[cell] == 0.0
+
+
 if __name__ == "__main__":
     import os
     import pytest
