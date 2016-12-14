@@ -29,8 +29,9 @@ ny = 3
 coords = []
 obs = []
 for i in range(ny):
-    coords.append(np.random.uniform(0, 1, (2)))
+    coords.append(np.random.uniform(0, 1, 1))
     obs.append(np.random.uniform(0, 1, 1))
+
 coords = tuple(coords)
 obs = tuple(obs)
 
