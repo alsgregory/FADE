@@ -25,8 +25,15 @@ V = FunctionSpace(mesh, 'DG', 0)
 fs = FunctionSpace(mesh, 'DG', 0)
 
 # the coordinates of observation (only cell)
-coords = tuple([np.array([0.5])])
-obs = tuple([0.1])
+ny = 3
+coords = []
+obs = []
+for i in range(ny):
+    coords.append(np.random.uniform(0, 1, 1))
+    obs.append(np.random.uniform(0, 1, 1))
+
+coords = tuple(coords)
+obs = tuple(obs)
 
 observation_operator = Observations(V)
 

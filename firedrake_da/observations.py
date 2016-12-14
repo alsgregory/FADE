@@ -45,6 +45,7 @@ class Observations(object):
         self.out_Project = Projector(self.cell_differences, self.out_func)
 
         self.observation_function = Function(self.cell_fs)
+        self.observation_function_diff = Function(self.cell_fs)
 
         super(Observations, self).__init__()
 
@@ -73,12 +74,23 @@ class Observations(object):
 
         # for each node, aggregate observations over cells
         ny = len(self.observations)
+
+        # reset observation function
         self.observation_function.assign(0)
+
         norm_const = np.zeros(len(self.observation_function.dat.data))
+        self.obs_num = np.ones(len(self.observation_function.dat.data))
+
         for i in range(ny):
             ind = self.nodes[i].astype(int)
             self.observation_function.dat.data[ind] += self.observations[i]
+
+            # normalization constant
             norm_const[ind] += 1.0
+
+            # state that that cell had an observation
+            self.obs_num[ind] = 0.0
+
         norm_const = np.maximum(norm_const, np.ones(len(self.observation_function.dat.data)))
         self.observation_function.dat.data[:] = np.divide(self.observation_function.dat.data[:],
                                                           norm_const)
@@ -113,8 +125,15 @@ class Observations(object):
         self.func.assign(func)
         self.in_Project.project()
 
+        self.observation_function_diff.assign(0)
+
+        # either observation difference or just the actual function
+        self.observation_function_diff.dat.data[:] = (np.multiply(self.in_func.dat.data[:],
+                                                                  self.obs_num) +
+                                                      self.observation_function.dat.data[:])
+
         # next, find the squared distance between the function and aggregated observations
-        self.cell_differences.assign(assemble((self.observation_function -
+        self.cell_differences.assign(assemble((self.observation_function_diff -
                                                self.in_func) ** p))
 
         # project back to function space of ensemble
