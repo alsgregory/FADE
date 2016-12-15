@@ -1,4 +1,4 @@
-""" kalman update calculation for an ensemble and observations - NB: Independent observation error! """
+""" kernel based kalman update calculation for an ensemble and observations - NB: Independent observation error! """
 
 from __future__ import division
 
@@ -10,10 +10,13 @@ import numpy as np
 
 from firedrake_da.kalman.cov import *
 from firedrake_da.observations import *
+from firedrake_da.kalman.kalman_kernel import *
+
+from pyop2.profiling import timed_stage
 
 
-def Kalman_update(ensemble, observation_operator, observation_coords, observations,
-                  sigma, fs_to_project_to="default"):
+def kalman_update(ensemble, observation_operator, observation_coords, observations,
+                  sigma):
 
     """
 
@@ -32,66 +35,105 @@ def Kalman_update(ensemble, observation_operator, observation_coords, observatio
         :arg sigma: variance of independent observation error
         :type sigma: float
 
-        :arg fs_to_project_to: optional argument allowing user to calculate kalman gain in
-                               another :class:`FunctionSpace` then simply DG0
-        :type fs_to_project_to: :class:`FunctionSpace`
-
     """
 
     if len(ensemble) < 1:
         raise ValueError('ensemble cannot be indexed')
     mesh = ensemble[0].function_space().mesh()
 
-    if fs_to_project_to is "default":
-        fs_to_project_to = FunctionSpace(mesh, 'DG', 0)
-
     # original space
-    original_space = ensemble[0].function_space()
+    fs = ensemble[0].function_space()
 
     n = len(ensemble)
+    nc = len(ensemble[0].dat.data)
 
-    """ we make the kalman gain in the 'observation space', given a simple fs_to_project_to
-    :class:`FunctionSpace`, and then build the new ensemble in this space, projecting back to
-    the original space """
+    # make into vector functions and preallocate covariance
+    deg = fs.ufl_element().degree()
+    fam = fs.ufl_element().family()
 
-    # generate covariance
-    cov, in_ensemble_dat = Covariance(ensemble, fs_to_project_to)
+    vfsn = VectorFunctionSpace(mesh, fam, deg, dim=n)
+    tfs = TensorFunctionSpace(mesh, fam, deg, (nc, n))
+
+    ensemble_f = Function(vfsn)
+    if n == 1:
+        ensemble_f.dat.data[:] = ensemble[0].dat.data[:]
+    else:
+        for i in range(n):
+            ensemble_f.dat.data[:, i] = ensemble[i].dat.data[:]
+
+    # covariance
+    cov = covariance(ensemble_f)
+
+    # generate inverse plus observation error
+    inv_cov_plus_R = Function(cov.function_space())
+    R = Function(cov.function_space())
+
+    # check that covariance is of correct shape
+    assert np.shape(R.dat.data)[0] == nc
+
+    R.dat.data[:] = np.diag(np.ones(nc) * sigma)
+    inv_cov_plus_R.dat.data[:] = np.linalg.inv(np.reshape(cov.dat.data[:] + R.dat.data[:],
+                                                          ((nc, nc))))
+
+    # find kalman gain
+    kalman_gain = Function(cov.function_space())
+    kalman_gain.dat.data[:] = np.dot(np.reshape(cov.dat.data[:],
+                                                ((nc, nc))),
+                                     np.reshape(inv_cov_plus_R.dat.data[:],
+                                                ((nc, nc))))
 
     # difference in the observation space
     p = 1
-    observation_operator.update_observation_operator(observation_coords, observations)
-    D = []
-    for i in range(n):
-        f = Function(fs_to_project_to)
-        # have to project that difference functions back into the fs_to_project_to
-        f.project(observation_operator.difference(ensemble[i], p))
-        D.append(f)
+    with timed_stage("Initial observation instance"):
+        observation_operator.update_observation_operator(observation_coords, observations)
+    with timed_stage("Preallocating functions"):
+        diff = Function(vfsn)
+    with timed_stage("Calculating observation differences"):
+        if n == 1:
+            f = observation_operator.difference(ensemble[0], p)
+            diff.dat.data[:] = f.dat.data[:]
+        else:
+            for i in range(n):
+                f = observation_operator.difference(ensemble[i], p)
+                diff.dat.data[:, i] = f.dat.data[:]
 
-    # now put this difference in matrix of data
-    d = np.zeros(np.shape(in_ensemble_dat))
-    for i in range(n):
-        d[:, i] = D[i].dat.data
+    # preallocate new ensemble function
+    with timed_stage("Preallocating functions"):
+        new_ensemble_f = Function(vfsn)
+        new_ensemble = []
+        for i in range(n):
+            f = Function(fs)
+            new_ensemble.append(f)
 
-    """ kalman gain and update """
-    # make R matrix on observation space - independent observation error!
-    r = np.identity(len(d[:, 0])) * sigma
+    # now carry out kernel on multiplying kalman gain to differences
+    with timed_stage("Preallocating functions"):
+        increments = Function(vfsn)
+        tensor_increments = Function(tfs)
 
-    # kalman gain - NB: because all components of K are in observation space, operator H becomes id
-    K = np.dot(cov, np.linalg.inv(cov + r))
-    X = in_ensemble_dat + np.dot(K, d)
+    # take the transpose of kalman gain matrix
+    kalman_gain.dat.data[:] = np.matrix.transpose(np.reshape(kalman_gain.dat.data[:],
+                                                             ((nc, nc))))
 
-    # formula for kalman gain
-    new_ensemble = []
-    for i in range(n):
-        f = Function(fs_to_project_to)
-        f.dat.data[:] = X[:, i]
-        new_ensemble.append(f)
+    # generate kernel and dictionary
+    with timed_stage("Carrying out kalman update"):
+        k_kernel = kalman_kernel_generation(n, nc)
+        Dict = {}
+        Dict.update({"product_tensor": (tensor_increments, WRITE)})
+        Dict.update({"input_matrix": (kalman_gain, READ)})
+        Dict.update({"input_vector": (diff, READ)})
+        par_loop(k_kernel.kalman_kernel, dx, Dict)
 
-    """ project new ensemble back to original space """
-    transformed_ensemble = []
+        increments.dat.data[:] = np.sum(tensor_increments.dat.data, axis=0)
 
-    for i in range(n):
-        out_func = Function(original_space).project(new_ensemble[i])
-        transformed_ensemble.append(out_func)
+    # add functions to find new ensemble
+    with timed_stage("Carrying out kalman update"):
+        new_ensemble_f = assemble(ensemble_f + increments)
 
-    return transformed_ensemble
+    # put back into individual functions
+    if n == 1:
+        new_ensemble[0].dat.data[:] = new_ensemble_f.dat.data[:]
+    else:
+        for i in range(n):
+            new_ensemble[i].dat.data[:] = new_ensemble_f.dat.data[:, i]
+
+    return new_ensemble

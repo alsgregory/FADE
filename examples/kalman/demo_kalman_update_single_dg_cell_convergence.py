@@ -42,12 +42,12 @@ def kalman_step(V, fs, n, observation_operator, coords, obs, sigma):
         ensemble.append(f)
 
     # generate posterior
-    X = Kalman_update(ensemble, observation_operator, coords, obs, sigma, fs)
+    X = kalman_update(ensemble, observation_operator, coords, obs, sigma)
 
     # generate mean
     M = 0
     for i in range(n):
-        M += (1 / float(n)) * X[i].dat.data[0]
+        M += (1 / float(n)) * X[i].dat.data[V.mesh().locate_cell(coords[0])]
 
     return M
 
