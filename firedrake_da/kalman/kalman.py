@@ -100,6 +100,10 @@ def kalman_update(ensemble, observation_operator, observation_coords, observatio
     # preallocate new ensemble function
     with timed_stage("Preallocating functions"):
         new_ensemble_f = Function(vfsn)
+        new_ensemble = []
+        for i in range(n):
+            f = Function(fs)
+            new_ensemble.append(f)
 
     # now carry out kernel on multiplying kalman gain to differences
     with timed_stage("Preallocating functions"):
@@ -127,9 +131,9 @@ def kalman_update(ensemble, observation_operator, observation_coords, observatio
 
     # put back into individual functions
     if n == 1:
-        ensemble[0].dat.data[:] = new_ensemble_f.dat.data[:]
+        new_ensemble[0].dat.data[:] = new_ensemble_f.dat.data[:]
     else:
         for i in range(n):
-            ensemble[i].dat.data[:] = new_ensemble_f.dat.data[:, i]
+            new_ensemble[i].dat.data[:] = new_ensemble_f.dat.data[:, i]
 
-    return ensemble
+    return new_ensemble
