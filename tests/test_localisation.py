@@ -22,10 +22,11 @@ def test_coarsening_localisation_single_cell_dg0():
     fs_hierarchy = tuple([FunctionSpace(m, 'DG', 0) for m in mesh_hierarchy])
 
     WLoc = Function(fs_hierarchy[-1]).assign(1.0)
+    WLoc_ = Function(fs_hierarchy[-1]).assign(WLoc)
 
-    WLocNew = CoarseningLocalisation(WLoc, r_loc)
+    WLoc = CoarseningLocalisation(WLoc, r_loc)
 
-    assert norm(assemble(WLoc - WLocNew)) == 0
+    assert norm(assemble(WLoc - WLoc_)) == 0
 
 
 def test_coarsening_localisation_single_cell_dg0_2():
@@ -41,10 +42,10 @@ def test_coarsening_localisation_single_cell_dg0_2():
     WLoc = Function(fs_hierarchy[1])
     WLoc.dat.data[0] = 1.0
 
-    WLocNew = CoarseningLocalisation(WLoc, r_loc)
+    WLoc = CoarseningLocalisation(WLoc, r_loc)
 
-    assert np.abs(0.5 - WLocNew.dat.data[0]) < 1e-5
-    assert np.abs(0.5 - WLocNew.dat.data[1]) < 1e-5
+    assert np.abs(0.5 - WLoc.dat.data[0]) < 1e-5
+    assert np.abs(0.5 - WLoc.dat.data[1]) < 1e-5
 
 
 def test_coarsening_localisation_no_localisation():
@@ -61,9 +62,11 @@ def test_coarsening_localisation_no_localisation():
 
     WLoc.dat.data[0] += 1.0
 
-    WLocNew = CoarseningLocalisation(WLoc, r_loc)
+    WLoc_ = Function(fs_hierarchy[-1]).assign(WLoc)
 
-    assert norm(assemble(WLoc - WLocNew)) == 0
+    WLoc = CoarseningLocalisation(WLoc, r_loc)
+
+    assert norm(assemble(WLoc - WLoc_)) == 0
 
 
 def test_coarsening_localisation_no_hierarchy():
@@ -80,13 +83,15 @@ def test_coarsening_localisation_no_hierarchy():
 
         WLoc.dat.data[0] += 1.0
 
+        WLoc_ = Function(fs).assign(WLoc)
+
         if r == 1:
             with pytest.raises(Exception):
                 CoarseningLocalisation(WLoc, r)
 
         if r == 0:
-            C = CoarseningLocalisation(WLoc, r)
-            assert C == WLoc
+            WLoc = CoarseningLocalisation(WLoc, r)
+            assert norm(assemble(WLoc - WLoc_)) == 0
 
 
 if __name__ == "__main__":

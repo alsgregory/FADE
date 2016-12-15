@@ -40,8 +40,8 @@ def CoarseningLocalisation(f, r_loc):
     fc = Function(FunctionSpace(hierarchy[lvl - r_loc], fs.ufl_element()))
     inject(f, fc)
 
-    # prolong back again
-    f_new = Function(fs)
-    prolong(fc, f_new)
+    # reset f and prolong back again
+    f.assign(0)
+    prolong(fc, f)
 
-    return f_new
+    return f
