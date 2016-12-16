@@ -11,12 +11,16 @@ import numpy as np
 from firedrake_da.kalman.cov import *
 from firedrake_da.observations import *
 from firedrake_da.kalman.kalman_kernel import *
+from firedrake_da.utils import *
+from firedrake_da.localisation import *
+
+import scipy.sparse as scp
 
 from pyop2.profiling import timed_stage
 
 
 def kalman_update(ensemble, observation_operator, observation_coords, observations,
-                  sigma):
+                  sigma, r_loc=0):
 
     """
 
@@ -34,6 +38,9 @@ def kalman_update(ensemble, observation_operator, observation_coords, observatio
 
         :arg sigma: variance of independent observation error
         :type sigma: float
+
+        :arg r_loc: Radius of covariance localisation
+        :type r_loc: int
 
     """
 
@@ -64,20 +71,27 @@ def kalman_update(ensemble, observation_operator, observation_coords, observatio
     # covariance
     cov = covariance(ensemble_f)
 
+    # generate localisation
+    loc = CovarianceLocalisation(cov.function_space(), r_loc)
+
+    # compute hadamard product
+    with timed_stage("Computing Hadamard Product of localisation and covariance functions"):
+        cov_loc = HadamardProduct(cov, loc)
+
     # generate inverse plus observation error
-    inv_cov_plus_R = Function(cov.function_space())
-    R = Function(cov.function_space())
+    inv_cov_plus_R = Function(cov_loc.function_space())
+    R = Function(cov_loc.function_space())
 
     # check that covariance is of correct shape
     assert np.shape(R.dat.data)[0] == nc
 
     R.dat.data[:] = np.diag(np.ones(nc) * sigma)
-    inv_cov_plus_R.dat.data[:] = np.linalg.inv(np.reshape(cov.dat.data[:] + R.dat.data[:],
+    inv_cov_plus_R.dat.data[:] = np.linalg.inv(np.reshape(cov_loc.dat.data[:] + R.dat.data[:],
                                                           ((nc, nc))))
 
     # find kalman gain
-    kalman_gain = Function(cov.function_space())
-    kalman_gain.dat.data[:] = np.dot(np.reshape(cov.dat.data[:],
+    kalman_gain = Function(cov_loc.function_space())
+    kalman_gain.dat.data[:] = np.dot(np.reshape(cov_loc.dat.data[:],
                                                 ((nc, nc))),
                                      np.reshape(inv_cov_plus_R.dat.data[:],
                                                 ((nc, nc))))

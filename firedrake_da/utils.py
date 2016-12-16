@@ -43,6 +43,55 @@ def CellToNode(cells, fs):
     return nodes
 
 
+def HadamardProduct(f1, f2):
+
+    """ Finds the Hadamard Product between two :class:`Function`s on the same space """
+
+    # check that the functions exist on same space
+    fs = f1.function_space()
+    assert fs == f2.function_space()
+
+    # define string for kernel for product
+    vshape = fs.ufl_element().value_shape()
+
+    itr_str = """ """
+    if len(np.shape(vshape)) == 0:
+        itr_str += """product[k][0]=f1[k][0]*f2[k][0];\n"""
+    if len(np.shape(vshape)) == 1:
+        for i in range(np.shape(vshape)[0]):
+            itr_str += """product[k][""" + str(i) + """]=f1[k][""" + str(i) + """]*f2[k][""" + str(i) + """];\n"""
+    if len(np.shape(vshape)) == 2:
+        for i in range(np.shape(vshape)[0]):
+            dim1 = np.shape(vshape)[0]
+            for j in range(np.shape(vshape)[1]):
+                itr_str += """product[k][""" + str((i * dim1) + j) + """]=f1[k][""" + str((i * dim1) + j) + """]*f2[k][""" + str((i * dim1) + j) + """];\n"""
+
+    if itr_str == """ """:
+        raise ValueError('Dimension of shape of functions is not compatible')
+
+    # generate the dictionary
+    Dict = {}
+    product = Function(fs)
+    Dict.update({"product": (product, WRITE)})
+    Dict.update({"f1": (f1, READ)})
+    Dict.update({"f2": (f2, READ)})
+
+    # generate the kernel
+    hp_kernel = """
+    for (int k=0;k<f1.dofs;k++){
+        """ + itr_str + """
+    }
+    """
+
+    # implement kernel
+    par_loop(hp_kernel, dx, Dict)
+
+    # evaluate kernel
+    product.dat.data[:] += 0
+
+    return product
+
+
 def update_Dictionary(Dict, ensemble, generic_label, access):
 
     """ This updates a dictionary with an ensemble of functions and their labels
