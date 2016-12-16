@@ -55,16 +55,16 @@ def HadamardProduct(f1, f2):
     vshape = fs.ufl_element().value_shape()
 
     itr_str = """ """
-    if len(np.shape(vshape)) == 0:
+    if len(vshape) == 0:
         itr_str += """product[k][0]=f1[k][0]*f2[k][0];\n"""
-    if len(np.shape(vshape)) == 1:
-        for i in range(np.shape(vshape)[0]):
+    if len(vshape) == 1:
+        for i in range(vshape[0]):
             itr_str += """product[k][""" + str(i) + """]=f1[k][""" + str(i) + """]*f2[k][""" + str(i) + """];\n"""
-    if len(np.shape(vshape)) == 2:
-        for i in range(np.shape(vshape)[0]):
-            dim1 = np.shape(vshape)[0]
-            for j in range(np.shape(vshape)[1]):
-                itr_str += """product[k][""" + str((i * dim1) + j) + """]=f1[k][""" + str((i * dim1) + j) + """]*f2[k][""" + str((i * dim1) + j) + """];\n"""
+    if len(vshape) == 2:
+        for i in range(vshape[0]):
+            dim = vshape[0]
+            for j in range(vshape[1]):
+                itr_str += """product[k][""" + str((i * dim) + j) + """]=f1[k][""" + str((i * dim) + j) + """]*f2[k][""" + str((i * dim) + j) + """];\n"""
 
     if itr_str == """ """:
         raise ValueError('Dimension of shape of functions is not compatible')
