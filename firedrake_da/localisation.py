@@ -98,7 +98,7 @@ def CovarianceLocalisation(vfs, r_loc):
         assert np.shape(fvfs.dat.data)[0] == np.shape(fvfs.dat.data)[1]
 
     # Place ones in diagonal in the index of basis coeffs
-    fvfs.dat.data[:] = np.diag(np.ones(dim))
+    fvfs.dat.data[:] = np.identity(dim)
 
     # If no localisation return diagonal matrix
     if r_loc == 0:
