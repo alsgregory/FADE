@@ -15,12 +15,13 @@ from firedrake_da.utils import *
 from firedrake_da.localisation import *
 
 import scipy.sparse as scp
+import scipy.sparse.linalg as scplinalg
 
 from pyop2.profiling import timed_stage
 
 
 def kalman_update(ensemble, observation_operator, observation_coords, observations,
-                  sigma, r_loc=0):
+                  sigma, r_loc=None):
 
     """
 
@@ -71,30 +72,42 @@ def kalman_update(ensemble, observation_operator, observation_coords, observatio
     # covariance
     cov = covariance(ensemble_f)
 
-    # generate localisation
-    loc = CovarianceLocalisation(cov.function_space(), r_loc)
+    # generate localisation if not None
+    if r_loc is None:
+        cov_loc = cov
 
-    # compute hadamard product
-    with timed_stage("Computing Hadamard Product of localisation and covariance functions"):
-        cov_loc = HadamardProduct(cov, loc)
+    else:
+        loc = CovarianceLocalisation(cov.function_space(), r_loc)
 
-    # generate inverse plus observation error
-    inv_cov_plus_R = Function(cov_loc.function_space())
-    R = Function(cov_loc.function_space())
+        # compute hadamard product
+        with timed_stage("Computing Hadamard Product of localisation and covariance functions"):
+            cov_loc = HadamardProduct(cov, loc)
 
     # check that covariance is of correct shape
-    assert np.shape(R.dat.data)[0] == nc
+    assert np.shape(cov_loc.dat.data)[0] == nc
 
-    R.dat.data[:] = np.diag(np.ones(nc) * sigma)
-    inv_cov_plus_R.dat.data[:] = np.linalg.inv(np.reshape(cov_loc.dat.data[:] + R.dat.data[:],
-                                                          ((nc, nc))))
+    # define R (measurement error) and the inverse of the R + cov in sparse form
+    R = np.diag(np.ones(nc) * sigma)
+    cov_loc_matrix = np.reshape(cov_loc.dat.data[:], ((nc, nc)))
+    cov_loc_plus_R = ConstructSparseMatrix(cov_loc_matrix + R)
+    inv_cov_plus_R = scplinalg.inv(cov_loc_plus_R)
 
     # find kalman gain
-    kalman_gain = Function(cov_loc.function_space())
-    kalman_gain.dat.data[:] = np.dot(np.reshape(cov_loc.dat.data[:],
-                                                ((nc, nc))),
-                                     np.reshape(inv_cov_plus_R.dat.data[:],
-                                                ((nc, nc))))
+    cov_loc_matrix_sparse = ConstructSparseMatrix(cov_loc_matrix)
+    kalman_gain = cov_loc_matrix_sparse.dot(inv_cov_plus_R)
+
+    # take the transpose of this kalman_gain matrix
+    kalman_gain_t = kalman_gain.transpose()
+
+    # put basis coefficients into a kalman gain function from this sparse matrix
+    K = Function(cov.function_space())
+    # find all non zero elements and loop over them
+    non_zeros = scp.find(kalman_gain_t)
+    for i in range(len(non_zeros[2])):
+        if nc == 1:
+            K.dat.data[non_zeros[0][i]] = non_zeros[2][i]
+        else:
+            K.dat.data[non_zeros[0][i], non_zeros[1][i]] = non_zeros[2][i]
 
     # difference in the observation space
     p = 1
@@ -124,16 +137,12 @@ def kalman_update(ensemble, observation_operator, observation_coords, observatio
         increments = Function(vfsn)
         tensor_increments = Function(tfs)
 
-    # take the transpose of kalman gain matrix
-    kalman_gain.dat.data[:] = np.matrix.transpose(np.reshape(kalman_gain.dat.data[:],
-                                                             ((nc, nc))))
-
     # generate kernel and dictionary
     with timed_stage("Carrying out kalman update"):
         k_kernel = kalman_kernel_generation(n, nc)
         Dict = {}
         Dict.update({"product_tensor": (tensor_increments, WRITE)})
-        Dict.update({"input_matrix": (kalman_gain, READ)})
+        Dict.update({"input_matrix": (K, READ)})
         Dict.update({"input_vector": (diff, READ)})
         par_loop(k_kernel.kalman_kernel, dx, Dict)
 

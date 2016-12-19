@@ -6,6 +6,8 @@ from __future__ import absolute_import
 
 from firedrake import *
 
+import scipy.sparse as scp
+
 import numpy as np
 
 
@@ -90,6 +92,31 @@ def HadamardProduct(f1, f2):
     product.dat.data[:] += 0
 
     return product
+
+
+def ConstructSparseMatrix(matrix):
+
+    """ Constructs a sparse matrix out of a matrix by using diag searches """
+
+    sparse_matrix = scp.lil_matrix(np.shape(matrix))
+
+    # check that it's a square matrix. do we need this condition? revisit!
+    assert np.shape(matrix)[0] == np.shape(matrix)[1]
+
+    # iterate over diags and skip if all elements are 0
+    for i in range(np.shape(matrix)[0]):
+        # could change this to be not just block diags (and change just one element
+        # if only one element is non-zero. revisit!
+        if np.any(matrix.diagonal((i + 1) - np.shape(matrix)[0]) != 0):
+            sparse_matrix.setdiag(matrix.diagonal((i + 1) - np.shape(matrix)[0]),
+                                  (i + 1) - np.shape(matrix)[0])
+
+    for i in range(np.shape(matrix)[1] - 1):
+        if np.any(matrix.diagonal(i + 1) != 0):
+            sparse_matrix.setdiag(matrix.diagonal(i + 1),
+                                  i + 1)
+
+    return sparse_matrix
 
 
 def update_Dictionary(Dict, ensemble, generic_label, access):
