@@ -77,6 +77,23 @@ def test_hadamard_product_tfs():
     assert np.max(np.abs(H.dat.data[:, :, 0] - np.array([[4.0, 1.0], [1.0, 4.0]]))) < 1e-5
 
 
+def test_sparse_matrix():
+
+    # sparse matrix test
+    A = np.ones((5, 5))
+    B = ConstructSparseMatrix(A)
+    for i in range(5):
+        for j in range(5):
+            assert A[i, j] == B[i, j]
+
+    # full matrix test
+    A = np.random.normal(0, 1, ((5, 5)))
+    B = ConstructSparseMatrix(A)
+    for i in range(5):
+        for j in range(5):
+            assert A[i, j] == B[i, j]
+
+
 if __name__ == "__main__":
     import os
     pytest.main(os.path.abspath(__file__))
