@@ -6,6 +6,8 @@ from __future__ import absolute_import
 
 from firedrake import *
 
+import scipy.sparse as scp
+
 import numpy as np
 
 
@@ -41,6 +43,80 @@ def CellToNode(cells, fs):
         nodes.append(fs.cell_node_list[cells[i].astype(int)])
 
     return nodes
+
+
+def HadamardProduct(f1, f2):
+
+    """ Finds the Hadamard Product between two :class:`Function`s on the same space """
+
+    # check that the functions exist on same space
+    fs = f1.function_space()
+    assert fs == f2.function_space()
+
+    # define string for kernel for product
+    vshape = fs.ufl_element().value_shape()
+
+    itr_str = """ """
+    if len(vshape) == 0:
+        itr_str += """product[k][0]=f1[k][0]*f2[k][0];\n"""
+    if len(vshape) == 1:
+        for i in range(vshape[0]):
+            itr_str += """product[k][""" + str(i) + """]=f1[k][""" + str(i) + """]*f2[k][""" + str(i) + """];\n"""
+    if len(vshape) == 2:
+        for i in range(vshape[0]):
+            dim = vshape[0]
+            for j in range(vshape[1]):
+                itr_str += """product[k][""" + str((i * dim) + j) + """]=f1[k][""" + str((i * dim) + j) + """]*f2[k][""" + str((i * dim) + j) + """];\n"""
+
+    if itr_str == """ """:
+        raise ValueError('Dimension of shape of functions is not compatible')
+
+    # generate the dictionary
+    Dict = {}
+    product = Function(fs)
+    Dict.update({"product": (product, WRITE)})
+    Dict.update({"f1": (f1, READ)})
+    Dict.update({"f2": (f2, READ)})
+
+    # generate the kernel
+    hp_kernel = """
+    for (int k=0;k<f1.dofs;k++){
+        """ + itr_str + """
+    }
+    """
+
+    # implement kernel
+    par_loop(hp_kernel, dx, Dict)
+
+    # evaluate kernel
+    product.dat.data[:] += 0
+
+    return product
+
+
+def ConstructSparseMatrix(matrix):
+
+    """ Constructs a sparse matrix out of a matrix by using diag searches """
+
+    sparse_matrix = scp.lil_matrix(np.shape(matrix))
+
+    # check that it's a square matrix. do we need this condition? revisit!
+    assert np.shape(matrix)[0] == np.shape(matrix)[1]
+
+    # iterate over diags and skip if all elements are 0
+    for i in range(np.shape(matrix)[0]):
+        # could change this to be not just block diags (and change just one element
+        # if only one element is non-zero. revisit!
+        if np.any(matrix.diagonal((i + 1) - np.shape(matrix)[0]) != 0):
+            sparse_matrix.setdiag(matrix.diagonal((i + 1) - np.shape(matrix)[0]),
+                                  (i + 1) - np.shape(matrix)[0])
+
+    for i in range(np.shape(matrix)[1] - 1):
+        if np.any(matrix.diagonal(i + 1) != 0):
+            sparse_matrix.setdiag(matrix.diagonal(i + 1),
+                                  i + 1)
+
+    return sparse_matrix
 
 
 def update_Dictionary(Dict, ensemble, generic_label, access):
