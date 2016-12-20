@@ -30,31 +30,38 @@ def ensemble_transform_update(ensemble, weights, r_loc):
 
     if len(ensemble) < 1:
         raise ValueError('ensemble cannot be indexed')
-
-    # function space
-    fs = ensemble[0].function_space()
+    if len(weights) < 1:
+        raise ValueError('weights cannot be indexed')
 
     n = len(ensemble)
+
+    # function space and vector function space
+    fs = ensemble[0].function_space()
+    deg = fs.ufl_element().degree()
+    fam = fs.ufl_element().family()
+    vfs = VectorFunctionSpace(fs.mesh(), fam, deg, dim=n)
 
     # check that weights have same length
     assert len(weights) == n
 
     # check that weights add up to one
     with timed_stage("Checking weights are normalized"):
-        nc = len(ensemble[0].dat.data)
-        c = np.zeros(nc)
+        c = Function(fs)
         for k in range(n):
-            c += weights[k].dat.data[:]
+            c.dat.data[:] += weights[k].dat.data[:]
 
-        if np.max(np.abs(c - 1)) > 1e-3:
+        if np.max(np.abs(c.dat.data[:] - 1)) > 1e-3:
             raise ValueError('Weights dont add up to 1')
 
-    # preallocate new ensemble
+    # preallocate new ensemble and assign basis coeffs to new vector function
     with timed_stage("Preallocating functions"):
-        new_ensemble = []
-        for i in range(n):
-            f = Function(fs)
-            new_ensemble.append(f)
+        ensemble_f = Function(vfs)
+        new_ensemble_f = Function(vfs)
+        if n == 1:
+            ensemble_f.dat.data[:] = ensemble[0].dat.data[:]
+        else:
+            for i in range(n):
+                ensemble_f.dat.data[:, i] = ensemble[i].dat.data[:]
 
     # define even weights
     with timed_stage("Preallocating functions"):
@@ -64,16 +71,32 @@ def ensemble_transform_update(ensemble, weights, r_loc):
             weights2.append(f)
 
     # ensemble transform implementation
-    kernel_transform(ensemble, ensemble, weights, weights2,
-                     new_ensemble, r_loc)
+    kernel_transform(ensemble_f, ensemble_f, weights, weights2,
+                     new_ensemble_f, r_loc)
 
     # check that components have the same mean
     with timed_stage("Checking posterior mean consistency"):
-        mn = np.zeros(nc)
-        m = np.zeros(nc)
+        m = Function(fs)
         for k in range(n):
-            mn += new_ensemble[k].dat.data[:] * (1.0 / n)
-            m += np.multiply(ensemble[k].dat.data[:], weights[k].dat.data[:])
-        assert np.max(np.abs(mn - m)) < 1e-5
+            m.dat.data[:] += np.multiply(ensemble[k].dat.data[:], weights[k].dat.data[:])
 
-    return new_ensemble
+    # override ensemble
+    if n == 1:
+        ensemble[0].dat.data[:] = new_ensemble_f.dat.data[:]
+    else:
+        for i in range(n):
+            ensemble[i].dat.data[:] = new_ensemble_f.dat.data[:, i]
+
+    # reset weights
+    for i in range(n):
+        weights[i].assign(1.0 / n)
+
+    # check that components have the same mean
+    with timed_stage("Checking posterior mean consistency"):
+        mn = Function(fs)
+        for k in range(n):
+            mn.dat.data[:] += np.multiply(ensemble[k].dat.data[:], weights[k].dat.data[:])
+
+        assert np.max(np.abs(mn.dat.data[:] - m.dat.data[:])) < 1e-5
+
+    return ensemble

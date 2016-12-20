@@ -50,16 +50,22 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs, sigma):
         ns[i] = n
         coarse = []
         fine = []
+        weights_c = []
+        weights_f = []
         for k in range(n):
             xc = np.random.normal(0, 1, 1)[0] + means[i]
             xf = np.random.normal(0, 1, 1)[0] + means[i + 1]
             coarse.append(Function(fs_hierarchy[i]).assign(xc))
             fine.append(Function(fs_hierarchy[i + 1]).assign(xf))
+            hc = Function(fs_hierarchy[i]).assign(1.0 / n)
+            weights_c.append(hc)
+            hf = Function(fs_hierarchy[i + 1]).assign(1.0 / n)
+            weights_f.append(hf)
 
         # weight calculation
         r_loc = 0
-        weights_c = weight_update(coarse, oo_hierarchy[i], coords, obs, sigma, r_loc)
-        weights_f = weight_update(fine, oo_hierarchy[i + 1], coords, obs, sigma, r_loc)
+        weights_c = weight_update(coarse, weights_c, oo_hierarchy[i], coords, obs, sigma, r_loc)
+        weights_f = weight_update(fine, weights_f, oo_hierarchy[i + 1], coords, obs, sigma, r_loc)
 
         # transform / couple
         new_coarse, new_fine = seamless_coupling_update(coarse,

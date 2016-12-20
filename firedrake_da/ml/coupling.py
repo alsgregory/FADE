@@ -46,6 +46,8 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
 
     if len(ensemble_1) < 1 or len(ensemble_2) < 1:
         raise ValueError('ensembles cannot be indexed')
+    if len(weights_1) < 1 or len(weights_2) < 1:
+        raise ValueError('weights cannot be indexed')
 
     # check that ensemble_1 and ensemble_2 have inputs in the same hierarchy
     mesh_1 = ensemble_1[0].function_space().mesh()
@@ -66,13 +68,21 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
     else:
         raise ValueError('Coarse ensemble needs to be the first ensemble, followed by a finer one')
 
-    # function spaces of both ensembles
-    fsc = ensemble_c[0].function_space()
-    fsf = ensemble_f[0].function_space()
-
     n = len(ensemble_c)
     if n is not len(ensemble_f):
         raise ValueError('Both ensembles need to be of the same length')
+
+    # function spaces of both ensembles and create vector function space
+    fsc = ensemble_c[0].function_space()
+    fsf = ensemble_f[0].function_space()
+    fam = fsc.ufl_element().family()
+    deg = fsc.ufl_element().degree()
+
+    assert fam == fsf.ufl_element().family()
+    assert deg == fsf.ufl_element().degree()
+
+    vfsc = VectorFunctionSpace(mesh_1, fam, deg, dim=n)
+    vfsf = VectorFunctionSpace(mesh_2, fam, deg, dim=n)
 
     # check that weights have same length
     assert len(weights_c) == n
@@ -80,29 +90,29 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
 
     # check that weights add up to one
     with timed_stage("Checking weights are normalized"):
-        ncc = len(ensemble_c[0].dat.data)
-        ncf = len(ensemble_f[0].dat.data)
-        cc = np.zeros(ncc)
-        cf = np.zeros(ncf)
+        cc = Function(fsc)
+        cf = Function(fsf)
         for k in range(n):
-            cc += weights_c[k].dat.data[:]
-            cf += weights_f[k].dat.data[:]
+            cc.dat.data[:] += weights_c[k].dat.data[:]
+            cf.dat.data[:] += weights_f[k].dat.data[:]
 
-        if np.max(np.abs(cc - 1)) > 1e-3 or np.max(np.abs(cf - 1)) > 1e-3:
+        if np.max(np.abs(cc.dat.data[:] - 1)) > 1e-3 or np.max(np.abs(cf.dat.data[:] - 1)) > 1e-3:
             raise ValueError('Coarse weights dont add up to 1')
 
-    # preallocate new / intermediate ensembles
+    # preallocate new / intermediate ensembles and assign basis coeffs to new vector function
     with timed_stage("Preallocating functions"):
-        new_ensemble_c = []
-        new_ensemble_f = []
-        int_ensemble_c = []
-        for i in range(n):
-            f = Function(fsc)
-            new_ensemble_c.append(f)
-            g = Function(fsf)
-            new_ensemble_f.append(g)
-            h = Function(fsc)
-            int_ensemble_c.append(h)
+        ensemble_c_f = Function(vfsc)
+        ensemble_f_f = Function(vfsf)
+        new_ensemble_c_f = Function(vfsc)
+        new_ensemble_f_f = Function(vfsf)
+        int_ensemble_c_f = Function(vfsc)
+        if n == 1:
+            ensemble_c_f.dat.data[:] = ensemble_c[0].dat.data[:]
+            ensemble_f_f.dat.data[:] = ensemble_f[0].dat.data[:]
+        else:
+            for i in range(n):
+                ensemble_c_f.dat.data[:, i] = ensemble_c[i].dat.data[:]
+                ensemble_f_f.dat.data[:, i] = ensemble_f[i].dat.data[:]
 
     # define even weights
     with timed_stage("Preallocating functions"):
@@ -116,54 +126,67 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
 
     # inject fine weights and ensembles down to coarse mesh
     with timed_stage("Injecting finer ensemble / weights down to coarse mesh"):
-        inj_ensemble_f = []
+        inj_ensemble_f_f = Function(vfsc)
         inj_weights_f = []
-        totals = np.zeros(ncc)
+        totals = Function(fsc)
         for i in range(n):
-            f = Function(fsc)
             g = Function(fsc)
-            inj_ensemble_f.append(f)
+            inject(weights_f[i], g)
             inj_weights_f.append(g)
-            inject(ensemble_f[i], inj_ensemble_f[i])
-            inject(weights_f[i], inj_weights_f[i])
-            totals += inj_weights_f[i].dat.data[:]
+            totals.dat.data[:] += inj_weights_f[i].dat.data[:]
+        inject(ensemble_f_f, inj_ensemble_f_f)
 
     # re-normalize injected fine weights
     for i in range(n):
-        inj_weights_f[i].dat.data[:] = np.divide(inj_weights_f[i].dat.data[:], totals)
+        inj_weights_f[i].dat.data[:] = np.divide(inj_weights_f[i].dat.data[:], totals.dat.data[:])
 
     with timed_stage("Coupling between weighted coarse and fine ensembles"):
-        kernel_transform(ensemble_c, inj_ensemble_f, weights_c,
-                         inj_weights_f, int_ensemble_c, r_loc_c)
+        kernel_transform(ensemble_c_f, inj_ensemble_f_f, weights_c,
+                         inj_weights_f, int_ensemble_c_f, r_loc_c)
 
     with timed_stage("Finer ensemble transform"):
-        kernel_transform(ensemble_f, ensemble_f, weights_f,
-                         even_weights_f, new_ensemble_f, r_loc_f)
+        kernel_transform(ensemble_f_f, ensemble_f_f, weights_f,
+                         even_weights_f, new_ensemble_f_f, r_loc_f)
 
     with timed_stage("Coupling weighted intermediate ensemble and transformed finer ensemble"):
         # inject transformed finer ensemble
-        inj_new_ensemble_f = []
-        for i in range(n):
-            f = Function(fsc)
-            inj_new_ensemble_f.append(f)
-            inject(new_ensemble_f[i], inj_new_ensemble_f[i])
+        inj_new_ensemble_f_f = Function(vfsc)
+        inject(new_ensemble_f_f, inj_new_ensemble_f_f)
 
-        kernel_transform(int_ensemble_c, inj_new_ensemble_f,
-                         inj_weights_f, even_weights_c, new_ensemble_c, r_loc_c)
+        kernel_transform(int_ensemble_c_f, inj_new_ensemble_f_f,
+                         inj_weights_f, even_weights_c, new_ensemble_c_f, r_loc_c)
 
     # check that components have the same mean
     with timed_stage("Checking posterior mean consistency"):
-        mnc = np.zeros(ncc)
-        mc = np.zeros(ncc)
-        mnf = np.zeros(ncf)
-        mf = np.zeros(ncf)
+        mc = Function(fsc)
+        mf = Function(fsf)
         for k in range(n):
-            mnc += new_ensemble_c[k].dat.data[:] * (1.0 / n)
-            mc += np.multiply(ensemble_c[k].dat.data[:], weights_c[k].dat.data[:])
-            mnf += new_ensemble_f[k].dat.data[:] * (1.0 / n)
-            mf += np.multiply(ensemble_f[k].dat.data[:], weights_f[k].dat.data[:])
+            mc.dat.data[:] += np.multiply(ensemble_c[k].dat.data[:], weights_c[k].dat.data[:])
+            mf.dat.data[:] += np.multiply(ensemble_f[k].dat.data[:], weights_f[k].dat.data[:])
 
-        assert np.max(np.abs(mnc - mc)) < 1e-5
-        assert np.max(np.abs(mnf - mf)) < 1e-5
+    # override ensembles
+    if n == 1:
+        ensemble_c[0].dat.data[:] = new_ensemble_c_f.dat.data[:]
+        ensemble_f[0].dat.data[:] = new_ensemble_f_f.dat.data[:]
+    else:
+        for i in range(n):
+            ensemble_c[i].dat.data[:] = new_ensemble_c_f.dat.data[:, i]
+            ensemble_f[i].dat.data[:] = new_ensemble_f_f.dat.data[:, i]
 
-    return new_ensemble_c, new_ensemble_f
+    # reset weights
+    for i in range(n):
+        weights_c[i].assign(1.0 / n)
+        weights_f[i].assign(1.0 / n)
+
+    # check that components have the same mean
+    with timed_stage("Checking posterior mean consistency"):
+        mnc = Function(fsc)
+        mnf = Function(fsf)
+        for k in range(n):
+            mnc.dat.data[:] += np.multiply(ensemble_c[k].dat.data[:], weights_c[k].dat.data[:])
+            mnf.dat.data[:] += np.multiply(ensemble_f[k].dat.data[:], weights_f[k].dat.data[:])
+
+        assert np.max(np.abs(mnc.dat.data[:] - mc.dat.data[:])) < 1e-5
+        assert np.max(np.abs(mnf.dat.data[:] - mf.dat.data[:])) < 1e-5
+
+    return ensemble_c, ensemble_f

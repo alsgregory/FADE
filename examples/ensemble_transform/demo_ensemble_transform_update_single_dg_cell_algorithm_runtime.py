@@ -50,13 +50,16 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
 
     # generate ensemble
     ensemble = []
+    weights = []
     for i in range(n):
         f = Function(V).assign(np.random.normal(1, 1, 1)[0])
+        g = Function(V).assign(1.0 / n)
         ensemble.append(f)
+        weights.append(g)
 
     # generate posterior
     r_loc = 0
-    weights = weight_update(ensemble, observation_operator, coords, obs, sigma, r_loc)
+    weights = weight_update(ensemble, weights, observation_operator, coords, obs, sigma, r_loc)
     X = ensemble_transform_update(ensemble, weights, lf)
 
     # generate mean
