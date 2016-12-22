@@ -67,7 +67,7 @@ def test_reset_weights():
 
     coord = tuple([np.array([0.5])])
 
-    obs = tuple([1])
+    obs = tuple([0.75])
 
     # build ensemble
     fsc = FunctionSpace(mesh_hierarchy[-2], 'DG', 0)
@@ -77,9 +77,9 @@ def test_reset_weights():
     weights_c = [Function(fsc), Function(fsc)]
     weights_f = [Function(fsf), Function(fsf)]
     ensemble_c[0].assign(1.0)
-    ensemble_c[1].assign(1.0)
+    ensemble_c[1].assign(1.5)
     ensemble_f[0].assign(1.0)
-    ensemble_f[1].assign(1.0)
+    ensemble_f[1].assign(1.5)
     weights_c[0].assign(0.5)
     weights_c[1].assign(0.5)
     weights_f[0].assign(0.5)
