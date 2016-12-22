@@ -47,7 +47,7 @@ class emd_kernel_generation(object):
 
         # generate emd kernel
         self.emd_kernel = """ int n=%(size_n)s;
-        for (int k=0;k<input_f_0.dofs;k++){
+        for (int k=0;k<input_f.dofs;k++){
             float matrix_identity[%(size_n)s][%(size_n)s];
             float _COST[%(size_n)s][%(size_n)s];
             float _M[%(size_n)s][%(size_n)s];
@@ -102,9 +102,9 @@ class emd_kernel_generation(object):
 
         output_str = ""
         for i in range(self.n):
-            output_str += "output_f_" + str(i) + "[k][0] = "
+            output_str += "output_f[k][" + str(i) + "] = "
             for j in range(self.n):
-                output_str += "(matrix_identity[" + str(j) + "][" + str(i) + "]*input_f_" + str(j) + "[k][0])"
+                output_str += "(matrix_identity[" + str(j) + "][" + str(i) + "]*input_f[k][" + str(j) + "])"
                 if j < self.n - 1:
                     output_str += "+"
                 else:
@@ -149,10 +149,10 @@ def get_cost_func_kernel(n):
     cost_func_str = " "
     for i in range(n):
         for j in range(n):
-            cost_func_str += "cost_tensor[k][" + str((i * n) + j) + "]=(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0])*(input_f_" + str(i) + "[k][0]-input_f2_" + str(j) + "[k][0]);\n"
+            cost_func_str += "cost_tensor[k][" + str((i * n) + j) + "]=(input_f[k][" + str(i) + "]-input_f2[k][" + str(j) + "])*(input_f[k][" + str(i) + "]-input_f2[k][" + str(j) + "]);\n"
 
     cost_func_kernel = """
-    for (int k=0;k<input_f_0.dofs;k++){
+    for (int k=0;k<input_f.dofs;k++){
     """ + cost_func_str + """
     }
     """
@@ -160,55 +160,47 @@ def get_cost_func_kernel(n):
     return cost_func_kernel
 
 
-def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
+def generate_localised_cost_tensor(ensemble_f, ensemble2_f, r_loc, option="kernel"):
 
     """ Computes a (localised) cost tensor function for the squared different between two ensembles
 
-        :arg ensemble: The first ensemble of functions to couple
-        :type ensemble: list / tuple
+        :arg ensemble_f: The first ensemble to couple
+        :type ensemble_f: Vector :class:`Function`
 
-        :arg ensemble2: The second ensemble of functions to couple
-        :type ensemble2: list / tuple
+        :arg ensemble2_f: The second ensemble to couple
+        :type ensemble2_f: Vector :class:`Function`
 
         :arg r_loc: Radius of coarsening localisation for the cost tensor
         :type r_loc: int
 
     """
 
-    n = len(ensemble)
-    assert len(ensemble2) == n
+    if len(np.shape(ensemble_f.dat.data)) == 1:
+        n = 1
+    else:
+        n = np.shape(ensemble_f.dat.data)[1]
 
-    mesh = ensemble[0].function_space().mesh()
+    mesh = ensemble_f.function_space().mesh()
 
     # get degree and family of function space
-    deg = ensemble[0].function_space().ufl_element().degree()
-    fam = ensemble[0].function_space().ufl_element().family()
+    deg = ensemble_f.function_space().ufl_element().degree()
+    fam = ensemble_f.function_space().ufl_element().family()
 
     # assert that its the same in ensemble2
-    assert deg == ensemble2[0].function_space().ufl_element().degree()
-    assert fam == ensemble2[0].function_space().ufl_element().family()
+    assert deg == ensemble2_f.function_space().ufl_element().degree()
+    assert fam == ensemble2_f.function_space().ufl_element().family()
 
-    # make tensor function space and vector function space
+    # make tensor function space and get vector function space
     tfs = TensorFunctionSpace(mesh, fam, deg, (n, n))
-    vfs = VectorFunctionSpace(mesh, fam, deg, dim=n)
+    vfs = ensemble_f.function_space()
 
-    # make test function and ensemble functions
+    # make test function
     phi = TestFunction(tfs)
-    ensemble_f = Function(vfs)
-    ensemble2_f = Function(vfs)
-    if n == 1:
-        ensemble_f.dat.data[:] = ensemble[0].dat.data[:]
-        ensemble2_f.dat.data[:] = ensemble2[0].dat.data[:]
-
-    else:
-        for i in range(n):
-            ensemble_f.dat.data[:, i] = ensemble[i].dat.data
-            ensemble2_f.dat.data[:, i] = ensemble2[i].dat.data
 
     # compute unlocalised cost function tensor
     if option == "assembly":
 
-        nc = ensemble[0].function_space().dof_dset.size
+        nc = vfs.dof_dset.size
         i, j = indices(2)
         with timed_stage("Creating the cost tensor"):
             f = ((IndexSum(IndexSum(Product(nc * phi[i, j], Product(ensemble_f[i], ensemble_f[i])),
@@ -226,15 +218,15 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
             cost_tensor_kernel = get_cost_func_kernel(n)
             cost_tensor = Function(tfs)
             Dict = {}
-            Dict = update_Dictionary(Dict, ensemble, "input_f_", "READ")
-            Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
+            Dict.update({"input_f": (ensemble_f, READ)})
+            Dict.update({"input_f2": (ensemble2_f, READ)})
             Dict.update({"cost_tensor": (cost_tensor, WRITE)})
             par_loop(cost_tensor_kernel, dx, Dict)
             # evaluate kernel
             cost_tensor.dat.data[:] += 0.0
 
     # assign basis coefficients from cost tensor to functions and localise them
-    fs = ensemble[0].function_space()
+    fs = FunctionSpace(mesh, fam, deg)
     cost_funcs = []
     with timed_stage("Preallocating functions"):
         if n == 1:
@@ -263,15 +255,15 @@ def generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option="kernel"):
     return cost_tensor
 
 
-def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, option="kernel"):
+def kernel_transform(ensemble_f, ensemble2_f, weights, weights2, out_func, r_loc, option="kernel"):
 
     """ Carries out a coupling transform using kernels
 
-        :arg ensemble: The first ensemble of functions to couple
-        :type ensemble: list / tuple
+        :arg ensemble_f: The first ensemble to couple
+        :type ensemble_f: Vector :class:`Function`
 
-        :arg ensemble2: The second ensemble of functions to couple
-        :type ensemble2: list / tuple
+        :arg ensemble2_f: The second ensemble to couple
+        :type ensemble2_f: Vector :class:`Function`
 
         :arg weights: The importance weights of first ensemble of functions to couple
         :type weights: list / tuple
@@ -287,21 +279,24 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
 
     """
 
+    if len(np.shape(ensemble_f.dat.data)) == 1:
+        n = 1
+    else:
+        n = np.shape(ensemble_f.dat.data)[1]
+
     # generate emd kernel
-    emd_k = emd_kernel_generation(len(ensemble))
+    emd_k = emd_kernel_generation(n)
 
     # generate cost funcs
-    cost_tensor = generate_localised_cost_tensor(ensemble, ensemble2, r_loc, option)
+    cost_tensor = generate_localised_cost_tensor(ensemble_f, ensemble2_f, r_loc, option)
 
     # make dictionary
     with timed_stage("Updating dictionary"):
         Dict = {}
 
-        # update with first functions
-        Dict = update_Dictionary(Dict, ensemble, "input_f_", "READ")
-
-        # update with second functions
-        Dict = update_Dictionary(Dict, ensemble2, "input_f2_", "READ")
+        # update with input functions
+        Dict.update({"input_f": (ensemble_f, READ)})
+        Dict.update({"input_f2": (ensemble2_f, READ)})
 
         # update with first weights
         Dict = update_Dictionary(Dict, weights, "input_weight_", "READ")
@@ -310,7 +305,7 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
         Dict = update_Dictionary(Dict, weights2, "input_weight2_", "READ")
 
         # update with output functions
-        Dict = update_Dictionary(Dict, out_func, "output_f_", "WRITE")
+        Dict.update({"output_f": (out_func, WRITE)})
 
         # update with cost tensor
         Dict.update({"cost_tensor":(cost_tensor, READ)})
@@ -328,5 +323,4 @@ def kernel_transform(ensemble, ensemble2, weights, weights2, out_func, r_loc, op
         par_loop(emd_k.emd_kernel, dx, Dict, ldargs=ldargs, headers=headers,
                  include_dirs=include_dirs)
         # evaluate kernel
-        for i in range(len(ensemble)):
-            out_func[i].dat.data[:] += 0.0
+        out_func.dat.data[:] += 0.0
