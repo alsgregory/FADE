@@ -1,5 +1,5 @@
 # firedrake-da
-A toolbox for data-assimilation algorithms for use with Firedrake
+A toolbox of data-assimilation algorithms for use with Firedrake
 
 ## Linux terminal installation
 As a prerequisite, it is required to have Firedrake installed alongside it's dependencies. Instructions on how to this can be found at: http://firedrakeproject.org/download.html. Then, it is required to have the Firedrake virtualenv activated; instructions for this can be found by again following the aforementioned link.
