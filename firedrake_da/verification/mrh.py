@@ -9,6 +9,8 @@ from firedrake import *
 
 import numpy as np
 
+import matplotlib.pyplot as plot
+
 
 class rank_histogram(object):
 
@@ -89,6 +91,19 @@ class rank_histogram(object):
 
         # uniform pick of intermediate rank
         self.ranks.append(self.__choose_uniform_rank(s_start, s_end) / (self.N + 1))
+
+    def plot_histogram(self):
+
+        # define bins
+        bins = np.linspace(0, 1, self.N + 2)
+
+        # plot histogram
+        n, bins, patches = plot.hist(self.ranks, bins=bins, normed=1,
+                                     facecolor='green', alpha=0.75)
+        plot.xlabel('rank of observation')
+        plot.ylabel('normalised frequency')
+        plot.axis([0, 1, 0, 1e-1 + np.max(n)])
+        plot.show()
 
     """ Iterative and Indexing functions """
 
