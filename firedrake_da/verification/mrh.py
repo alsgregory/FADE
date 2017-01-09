@@ -7,6 +7,8 @@ from __future__ import absolute_import
 
 from firedrake import *
 
+from firedrake_da.utils import *
+
 import numpy as np
 
 import matplotlib.pyplot as plot
@@ -14,12 +16,15 @@ import matplotlib.pyplot as plot
 
 class rank_histogram(object):
 
-    def __init__(self, N):
+    def __init__(self, function_space, N):
 
         """ Can compute the multidimensional rank histogram of an ensemble of Firedrake functions
             using observations given by coordinates. NB: All ensemble members must stay same
             inde in the ensemble with all observations. Cannot do this between resampling /
             transform assimilation steps.
+
+            :arg function_space: The :class:`FunctionSpace` of the ensemble :class:`Function`s
+            :type function_space: :class:`FunctionSpace`
 
             :arg N: Ensemble size
             :type N: int
@@ -27,6 +32,26 @@ class rank_histogram(object):
         """
 
         self.N = N
+
+        self.mesh = function_space.mesh()
+
+        # define function space and dg0 function of ensemble
+        self.function_space = function_space
+        self.dg0_function_space = FunctionSpace(self.mesh,
+                                                self.function_space.ufl_element().family(),
+                                                self.function_space.ufl_element().degree())
+        self.dg0_function = Function(self.dg0_function_space)
+
+        self.normalizing_function = Function(self.dg0_function_space)
+
+        # make ensembles and dg0 ensembles
+        self.in_ensemble = []
+        self.in_dg0_ensemble = []
+        self.inProjectors = []
+        for i in range(self.N):
+            self.in_ensemble.append(Function(self.function_space))
+            self.in_dg0_ensemble.append(Function(self.dg0_function_space))
+            self.inProjectors.append(Projector(self.in_ensemble[i], self.in_dg0_ensemble[i]))
 
         # define rank list
         self.ranks = []
@@ -64,25 +89,53 @@ class rank_histogram(object):
 
         assert len(ensemble) is self.N
 
+        # place ensemble into in_ensemble
+        if ensemble[0].function_space() is not self.function_space:
+            raise ValueError("ensemble needs to be on same function space as rank " +
+                             "histogram class was initialized with")
+
+        for i in range(self.N):
+            self.in_ensemble[i].assign(ensemble[i])
+
         # number of coordinate observations - proxy for dimensions
         ny = len(observations)
 
+        # find cells and nodes that contain observations
+        cells = PointToCell(observation_coords, self.mesh)
+        nodes = CellToNode(cells, self.dg0_function_space)
+        unique_nodes = np.unique(nodes)
+
+        # project ensemble to dg0 function space
+        for i in range(self.N):
+            self.inProjectors[i].project()
+
         # preallocate a ensemble of state values at coordinates
-        state_ensemble = np.zeros((ny, self.N + 1))
+        d = len(unique_nodes)
+        state_ensemble = np.zeros((d, self.N + 1))
 
-        # place observations in
-        state_ensemble[:, 0] = observations
-
+        self.normalizing_function.assign(0)
+        self.dg0_function.assign(0)
         for i in range(ny):
 
-            for j in range(self.N):
-                # calculate an ensemble of scalar state values
-                state_ensemble[i, j + 1] = ensemble[j].at(observation_coords[i])
+            # place aggregated observations onto dg0 function space
+            self.dg0_function.dat.data[nodes[i].astype(int)] += observations[i]
+            self.normalizing_function.dat.data[nodes[i].astype(int)] += 1.0
+
+        # normalize and extract to array of cells with observations in
+        observedCells = np.divide(self.dg0_function.dat.data[unique_nodes.astype(int)],
+                                  self.normalizing_function.dat.data[unique_nodes.astype(int)])
+
+        # place observations into state_ensemble
+        state_ensemble[:, 0] = observedCells
+
+        for j in range(self.N):
+            # calculate an ensemble of scalar state values
+            state_ensemble[:, j + 1] = ensemble[j].dat.data[unique_nodes.astype(int)]
 
         # compute pre-ranks
         rho = np.zeros(self.N + 1)
         for i in range(self.N + 1):
-            rho[i] = np.sum(np.prod(np.reshape(state_ensemble[:, i], ((ny, 1))) >
+            rho[i] = np.sum(np.prod(np.reshape(state_ensemble[:, i], ((d, 1))) >
                                     state_ensemble, axis=0))
 
         # make start / end points of s to pick uniformly from

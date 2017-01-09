@@ -23,7 +23,7 @@ def test_mrh_n_equals_1():
     ensemble = [f]
 
     # set-up rank histogram class
-    R = rank_histogram(1)
+    R = rank_histogram(fs, 1)
     for i in range(20):
         R.compute_rank(ensemble, coords, obs)
 
@@ -43,7 +43,7 @@ def test_mrh_2_obs():
     ensemble = [f]
 
     # set-up rank histogram class
-    R = rank_histogram(1)
+    R = rank_histogram(fs, 1)
     for i in range(20):
         R.compute_rank(ensemble, coords, obs)
 
@@ -53,10 +53,12 @@ def test_mrh_2_obs():
 def test_choose_uniform_rank():
 
     n = 500000
+    mesh = UnitIntervalMesh(1)
+    fs = FunctionSpace(mesh, 'DG', 0)
     ranks = np.zeros(n)
+    R = rank_histogram(fs, 1)
 
     for i in range(n):
-        R = rank_histogram(1)
         ranks[i] = R._rank_histogram__choose_uniform_rank(0, 1)
 
     assert np.abs(np.mean(ranks) - 0.5) < 2e-3
