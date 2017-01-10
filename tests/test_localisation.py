@@ -94,59 +94,6 @@ def test_coarsening_localisation_no_hierarchy():
             assert norm(assemble(WLoc - WLoc_)) == 0
 
 
-def test_covariance_localisation_1():
-
-    mesh = UnitIntervalMesh(10)
-
-    vfs = VectorFunctionSpace(mesh, 'DG', 0, dim=10)
-
-    r_loc = 2
-
-    L = CovarianceLocalisation(vfs, r_loc)
-
-    assert np.shape(L.dat.data) == (10, 10)
-
-    assert np.max(np.abs(np.diagonal(L.dat.data) - np.ones(10))) < 1e-5
-    assert np.max(np.abs(np.diagonal(L.dat.data, 1) - (0.75 * np.ones(9)))) < 1e-5
-    assert np.max(np.abs(np.diagonal(L.dat.data, 2) - (0.25 * np.ones(8)))) < 1e-5
-    assert np.max(np.abs(np.diagonal(L.dat.data, -1) - (0.75 * np.ones(9)))) < 1e-5
-    assert np.max(np.abs(np.diagonal(L.dat.data, -2) - (0.25 * np.ones(8)))) < 1e-5
-
-
-def test_covariance_localisation_2():
-
-    mesh = UnitIntervalMesh(10)
-
-    fs = FunctionSpace(mesh, 'CG', 1)
-    dim = fs.dof_dset.size
-    vfs = VectorFunctionSpace(mesh, 'CG', 1, dim=dim)
-
-    r_loc = 0
-
-    L = CovarianceLocalisation(vfs, r_loc)
-
-    assert np.shape(L.dat.data) == (dim, dim)
-
-    assert np.max(np.abs(np.diagonal(L.dat.data) - np.ones(dim))) < 1e-5
-
-
-def test_covariance_localisation_3():
-
-    mesh = UnitSquareMesh(10, 10)
-
-    fs = FunctionSpace(mesh, 'DG', 1)
-    dim = fs.dof_dset.size
-    vfs = VectorFunctionSpace(mesh, 'DG', 1, dim=dim)
-
-    r_loc = 0
-
-    L = CovarianceLocalisation(vfs, r_loc)
-
-    assert np.shape(L.dat.data) == (dim, dim)
-
-    assert np.max(np.abs(np.diagonal(L.dat.data) - np.ones(dim))) < 1e-5
-
-
 if __name__ == "__main__":
     import os
     pytest.main(os.path.abspath(__file__))
