@@ -11,87 +11,43 @@ import numpy as np
 import pytest
 
 
-def test_hadamard_product_fs():
+def test_point_to_cell():
 
-    mesh = UnitIntervalMesh(2)
+    mesh = UnitIntervalMesh(1)
 
-    V = FunctionSpace(mesh, 'DG', 0)
+    coords = [np.array([0.5])]
 
-    f1 = Function(V)
-    f2 = Function(V)
+    cells = PointToCell(coords, mesh)
 
-    f1.dat.data[0] = 2.0
-    f1.dat.data[1] = 1.0
-    f2.dat.data[0] = 2.0
-    f2.dat.data[1] = 1.0
-
-    H = HadamardProduct(f1, f2)
-
-    assert np.max(np.abs(H.dat.data[:] - np.array([4.0, 1.0]))) < 1e-5
+    assert cells[0] == 0
+    assert len(cells) == 1
 
 
-def test_hadamard_product_vfs():
+def test_cell_to_node_dg0():
 
-    mesh = UnitIntervalMesh(2)
+    mesh = UnitIntervalMesh(1)
+    fs = FunctionSpace(mesh, 'DG', 0)
 
-    V = VectorFunctionSpace(mesh, 'DG', 0, dim=2)
+    cells = [np.array([0])]
 
-    f1 = Function(V)
-    f2 = Function(V)
+    nodes = CellToNode(cells, fs)
 
-    f1.dat.data[0, 0] = 2.0
-    f1.dat.data[1, 0] = 1.0
-    f1.dat.data[0, 1] = 1.0
-    f1.dat.data[1, 1] = 2.0
-    f2.dat.data[0, 0] = 2.0
-    f2.dat.data[1, 0] = 1.0
-    f2.dat.data[0, 1] = 1.0
-    f2.dat.data[1, 1] = 2.0
-
-    H = HadamardProduct(f1, f2)
-
-    assert np.max(np.abs(H.dat.data[:] - np.array([[4.0, 1.0], [1.0, 4.0]]))) < 1e-5
+    assert nodes[0][0] == 0
+    assert len(nodes[0]) == 1
 
 
-def test_hadamard_product_tfs():
+def test_cell_to_node_dg1():
 
-    mesh = UnitIntervalMesh(2)
+    mesh = UnitIntervalMesh(1)
+    fs = FunctionSpace(mesh, 'DG', 1)
 
-    V = TensorFunctionSpace(mesh, 'DG', 0, ((2, 2)))
+    cells = [np.array([0])]
 
-    f1 = Function(V)
-    f2 = Function(V)
+    nodes = CellToNode(cells, fs)
 
-    f1.dat.data[0, 0, :] = 2.0
-    f1.dat.data[1, 0, :] = 1.0
-    f1.dat.data[0, 1, :] = 1.0
-    f1.dat.data[1, 1, :] = 2.0
-    f2.dat.data[0, 0, :] = 2.0
-    f2.dat.data[1, 0, :] = 1.0
-    f2.dat.data[0, 1, :] = 1.0
-    f2.dat.data[1, 1, :] = 2.0
-
-    H = HadamardProduct(f1, f2)
-
-    assert np.max(np.abs(H.dat.data[:, :, 1] - np.array([[4.0, 1.0], [1.0, 4.0]]))) < 1e-5
-    assert np.max(np.abs(H.dat.data[:, :, 0] - np.array([[4.0, 1.0], [1.0, 4.0]]))) < 1e-5
-
-
-def test_sparse_matrix():
-
-    # sparse matrix test
-    A = np.ones((5, 5))
-    B = ConstructSparseMatrix(A)
-    for i in range(5):
-        for j in range(5):
-            assert A[i, j] == B[i, j]
-
-    # full matrix test
-    A = np.random.normal(0, 1, ((5, 5)))
-    B = ConstructSparseMatrix(A)
-    for i in range(5):
-        for j in range(5):
-            assert A[i, j] == B[i, j]
+    assert nodes[0][0][0] == 0
+    assert nodes[0][0][1] == 1
+    assert len(nodes[0][0]) == 2
 
 
 if __name__ == "__main__":
