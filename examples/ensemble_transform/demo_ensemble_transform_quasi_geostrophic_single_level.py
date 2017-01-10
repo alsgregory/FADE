@@ -10,6 +10,8 @@ from firedrake_da import *
 # requires the use of quasi_geostrophic_model package
 from quasi_geostrophic_model import *
 
+import matplotlib.pyplot as plot
+
 import numpy as np
 
 
@@ -43,6 +45,11 @@ def get_observations(dg_fs, cg_fs, dt, T, var, R, ny):
     QG.initial_condition(ic(mesh))
     refFile.write(QG.q_)
 
+    dg0_fs = FunctionSpace(mesh, 'DG', 0)
+    dg0_f = Function(dg0_fs)
+    dg0Projector = Projector(QG.q_, dg0_f)
+    refFunctions = []
+
     nt = int(T / dt)
     for i in range(nt):
         QG.timestepper((i + 1) * dt)
@@ -57,7 +64,12 @@ def get_observations(dg_fs, cg_fs, dt, T, var, R, ny):
                                    np.random.normal(0, np.sqrt(R), 1)[0])
         refFile.write(QG.q_)
 
-    return coords, observations
+        # keep reference functions (in dg0) for error
+        dg0Projector.project()
+        f = Function(dg0_fs).assign(dg0_f)
+        refFunctions.append(f)
+
+    return coords, observations, refFunctions
 
 
 def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
@@ -72,6 +84,10 @@ def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
     # mean file
     meanqFile = File("et_mean_q.pvd")
     M = Function(dg_fs)
+    dg0_fs = FunctionSpace(mesh, 'DG', 0)
+    dg0_f = Function(dg0_fs)
+    MProjector = Projector(M, dg0_f)
+    meanFunctions = []
 
     # generate ensemble
     psi_ensemble = []
@@ -138,6 +154,13 @@ def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
             M += q_ensemble[i] * (1.0 / N)
         meanqFile.write(M)
 
+        # keep mean functions for error
+        MProjector.project()
+        f = Function(dg0_fs).assign(dg0_f)
+        meanFunctions.append(f)
+
+    return meanFunctions
+
 
 # variance of random forcing
 var = 2.0
@@ -147,16 +170,33 @@ observation_operator = Observations(dg_fs)
 
 # assimilation parameters (every 1.0 time we have an assimilation step)
 dt = 1.0
-T = 50.0
-ny = 100
-N = 20
-R = 2.5e-2
+T = 10.0
+ny = 150
+N = 25
+R = 1e-2
 
 # run simulation
 print "finding observations..."
-coords, observations = get_observations(dg_fs, cg_fs, dt, T, var, R, ny)
+coords, observations, refFunctions = get_observations(dg_fs, cg_fs, dt, T, var, R, ny)
 
 print "simulating ensemble transform mean of potential vorticity..."
-quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
-                                     dt, T, var, R,
-                                     observation_operator, coords, observations)
+meanFunctions = quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
+                                                     dt, T, var, R,
+                                                     observation_operator, coords, observations)
+
+# find error
+error = np.zeros(len(meanFunctions))
+for i in range(len(meanFunctions)):
+    error[i] = norm(assemble(meanFunctions[i] - refFunctions[i]))
+
+# plot error
+obs_error = np.sqrt(R) * np.ones(len(meanFunctions))
+
+ts = np.linspace(dt, T, int(T / dt))
+
+plot.plot(ts, error, 'r*-')
+plot.plot(ts, obs_error, 'bo-')
+plot.xlabel('time')
+plot.ylabel('normalized error')
+plot.legend(['etpf mean', 'observations'])
+plot.show()
