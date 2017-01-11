@@ -7,7 +7,7 @@ from __future__ import absolute_import
 
 from firedrake import *
 
-from firedrake_da.utils import *
+from fade.utils import *
 
 import numpy as np
 

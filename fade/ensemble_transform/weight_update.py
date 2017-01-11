@@ -10,8 +10,8 @@ from firedrake.mg.utils import get_level
 
 import numpy as np
 
-from firedrake_da.observations import *
-from firedrake_da.localisation import *
+from fade.observations import *
+from fade.localisation import *
 
 from pyop2.profiling import timed_stage
 
