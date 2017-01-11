@@ -8,7 +8,7 @@ from firedrake import *
 
 import numpy as np
 
-from firedrake_da.EMD.emd_kernel import *
+from fade.emd.emd_kernel import *
 
 from pyop2.profiling import timed_stage
 

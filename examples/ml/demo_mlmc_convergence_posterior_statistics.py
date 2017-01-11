@@ -4,7 +4,7 @@ from __future__ import division
 
 from firedrake import *
 from firedrake_mlmc import *
-from firedrake_da import *
+from fade import *
 
 import matplotlib.pyplot as plot
 
@@ -17,7 +17,7 @@ mesh_hierarchy = MeshHierarchy(UnitSquareMesh(1, 1), L)
 
 # define each level means
 means = np.ones(L + 1)
-means[0 : L - 1] = 2 ** (-np.linspace(0, L - 2, L - 1))
+means[0:L - 1] = 2 ** (-np.linspace(0, L - 2, L - 1))
 means[-1] = 0
 
 # the coordinates of observation (only one cell)
@@ -93,17 +93,15 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs, sigma):
     return mean, var
 
 
-
 # run the convergence loops with increasing n
 
 s = 5
 niter = 5
 
-N0s = (4 * ( 2** np.linspace(0, s - 1, s))).astype(int)
+N0s = (4 * (2 ** np.linspace(0, s - 1, s))).astype(int)
 
 rmse_func = np.zeros(s)
 var_func = np.zeros(s)
-
 
 for i in range(s):
 

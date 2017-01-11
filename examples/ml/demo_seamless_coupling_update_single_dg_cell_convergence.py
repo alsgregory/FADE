@@ -5,8 +5,8 @@ from __future__ import division
 
 from __future__ import absolute_import
 
-from firedrake_da import *
-from firedrake_da.ml import *
+from fade import *
+from fade.ml import *
 
 import numpy as np
 

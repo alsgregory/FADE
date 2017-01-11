@@ -1,11 +1,11 @@
 all:
 
 lint:
-	@echo "    Linting firedrake_da codebase"
-	@flake8 firedrake_da
-	@echo "    Linting firedrake_da test suite"
+	@echo "    Linting fade codebase"
+	@flake8 fade
+	@echo "    Linting fade test suite"
 	@flake8 tests
-	@echo "    Linting firedrake_da demo suite"
+	@echo "    Linting fade demo suite"
 	@flake8 examples
 
 test:

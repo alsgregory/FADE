@@ -5,7 +5,7 @@ from __future__ import division
 
 from __future__ import absolute_import
 
-from firedrake_da import *
+from fade import *
 
 # requires the use of quasi_geostrophic_model package
 from quasi_geostrophic_model import *

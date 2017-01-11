@@ -1,4 +1,4 @@
-""" class taking in observations (given by coordinates) and using them in firedrake_da """
+""" class taking in observations (given by coordinates) and using them in FADE """
 
 from __future__ import division
 
@@ -6,7 +6,7 @@ from __future__ import absolute_import
 
 from firedrake import *
 
-from firedrake_da.utils import *
+from fade.utils import *
 
 
 class Observations(object):

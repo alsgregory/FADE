@@ -7,9 +7,9 @@ from __future__ import division
 
 from firedrake import *
 from firedrake.mg.utils import get_level
-from firedrake_da import *
-from firedrake_da.ml import *
-from firedrake_da.EMD.emd_kernel import *
+from fade import *
+from fade.ml import *
+from fade.emd.emd_kernel import *
 
 import numpy as np
 

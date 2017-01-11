@@ -10,8 +10,8 @@ from __future__ import absolute_import
 
 from firedrake import *
 
-from firedrake_da.localisation import *
-from firedrake_da.utils import *
+from fade.localisation import *
+from fade.utils import *
 
 import numpy as np
 
@@ -314,9 +314,9 @@ def kernel_transform(ensemble_f, ensemble2_f, weights, weights2, out_func, r_loc
     p = os.getcwd()
 
     # key options for par_loop
-    ldargs=["-L" + p + "/firedrake_da/EMD", "-Wl,-rpath," + p + "/firedrake_da/EMD", "-lemd"]
+    ldargs=["-L" + p + "/fade/emd", "-Wl,-rpath," + p + "/fade/emd", "-lemd"]
     headers=["#include <emd.h>"]
-    include_dirs=[p + "/firedrake_da/EMD"]
+    include_dirs=[p + "/fade/emd"]
 
     # carry out par_loop -> out_func gets overwritten
     with timed_stage("Ensemble transform"):
