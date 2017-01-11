@@ -26,7 +26,7 @@ def test_mrh_n_equals_1():
     for i in range(20):
         R.compute_rank(ensemble, coords, obs)
 
-    assert np.all(R.ranks[0] >= 0.0) and np.all(R.ranks[0] <= 0.5)
+    assert np.all(R.ranks[0] == 0.5)
 
 
 def test_mrh_2_obs():
@@ -46,7 +46,7 @@ def test_mrh_2_obs():
     for i in range(20):
         R.compute_rank(ensemble, coords, obs)
 
-    assert np.all(R.ranks[0] >= 0.0) and np.all(R.ranks[0] <= 1.0)
+    assert np.all(R.ranks[0] >= 0.5) and np.all(R.ranks[0] <= 1.0)
 
 
 def test_choose_uniform_rank():
@@ -58,9 +58,9 @@ def test_choose_uniform_rank():
     R = rank_histogram(fs, 1)
 
     for i in range(n):
-        ranks[i] = R._rank_histogram__choose_uniform_rank(0, 1)
+        ranks[i] = R._rank_histogram__choose_uniform_rank(0, 2)
 
-    assert np.abs(np.mean(ranks) - 0.5) < 2e-3
+    assert np.abs(np.mean(ranks) - 1.5) < 2e-3
 
 
 if __name__ == "__main__":

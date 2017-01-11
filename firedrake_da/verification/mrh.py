@@ -64,10 +64,10 @@ class rank_histogram(object):
         assert a % 1 == 0
         assert b % 1 == 0
 
-        flt = np.random.uniform(a, b + 1)
-        int_rank = np.floor(flt)
+        rank = a + 1 + np.where(np.random.multinomial(1, (np.ones(b) /
+                                                          b)) == 1)[0][0]
 
-        return int_rank
+        return rank
 
     def compute_rank(self, ensemble, observation_coords, observations):
 
@@ -107,6 +107,7 @@ class rank_histogram(object):
 
         # project ensemble to dg0 function space
         for i in range(self.N):
+            self.in_ensemble[i].assign(ensemble[i])
             self.inProjectors[i].project()
 
         # preallocate a ensemble of state values at coordinates
@@ -130,7 +131,7 @@ class rank_histogram(object):
 
         for j in range(self.N):
             # calculate an ensemble of scalar state values
-            state_ensemble[:, j + 1] = ensemble[j].dat.data[unique_nodes.astype(int)]
+            state_ensemble[:, j + 1] = self.in_dg0_ensemble[j].dat.data[unique_nodes.astype(int)]
 
         # compute pre-ranks
         rho = np.zeros(self.N + 1)
