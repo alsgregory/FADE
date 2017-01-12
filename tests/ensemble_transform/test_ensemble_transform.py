@@ -34,7 +34,8 @@ def test_ensemble_transform_mean_preserving():
     # compute weights - should be even
     sigma = 0.1
     observation_operator = Observations(fs)
-    weights = weight_update(ensemble, weights, observation_operator, coord, obs, sigma, r_loc)
+    observation_operator.update_observation_operator(coord, obs)
+    weights = weight_update(ensemble, weights, observation_operator, sigma, r_loc)
 
     # compute ensemble transform - should be 1.0's
     new_ensemble = ensemble_transform_update(ensemble, weights, r_loc_cost)
