@@ -64,8 +64,10 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs, sigma):
 
         # weight calculation
         r_loc = 0
-        weights_c = weight_update(coarse, weights_c, oo_hierarchy[i], coords, obs, sigma, r_loc)
-        weights_f = weight_update(fine, weights_f, oo_hierarchy[i + 1], coords, obs, sigma, r_loc)
+        oo_hierarchy[i].update_observation_operator(coords, obs)
+        oo_hierarchy[i + 1].update_observation_operator(coords, obs)
+        weights_c = weight_update(coarse, weights_c, oo_hierarchy[i], sigma)
+        weights_f = weight_update(fine, weights_f, oo_hierarchy[i + 1], sigma)
 
         # transform / couple
         new_coarse, new_fine = seamless_coupling_update(coarse,

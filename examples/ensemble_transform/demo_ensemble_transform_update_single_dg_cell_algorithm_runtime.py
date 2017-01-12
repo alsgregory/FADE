@@ -58,8 +58,8 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
         weights.append(g)
 
     # generate posterior
-    r_loc = 0
-    weights = weight_update(ensemble, weights, observation_operator, coords, obs, sigma, r_loc)
+    observation_operator.update_observation_operator(coords, obs)
+    weights = weight_update(ensemble, weights, observation_operator, sigma)
     X = ensemble_transform_update(ensemble, weights, lf)
 
     # generate mean

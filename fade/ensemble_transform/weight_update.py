@@ -16,8 +16,7 @@ from fade.localisation import *
 from pyop2.profiling import timed_stage
 
 
-def weight_update(ensemble, weights, observation_operator, observation_coords,
-                  observations, sigma, r_loc):
+def weight_update(ensemble, weights, observation_operator, sigma, r_loc=0):
 
     """ Calculates the importance weights of ensemble members around assumed gaussian observations
 
@@ -27,19 +26,16 @@ def weight_update(ensemble, weights, observation_operator, observation_coords,
         :arg weights: list of current weight :class:`Function`s
         :type weights: tuple / list
 
-        :arg observation_operator: the :class:`Observations` for the assimilation problem
+        :arg observation_operator: the :class:`Observations` for the assimilation problem - updated
+                                   with observations and coordinates for the current assimilation step
         :type observation_operator: :class:`Observations`
-
-        :arg observation_coords: tuple / list defining the coords of observations
-        :type observation_coords: tuple / list
-
-        :arg observations: tuple / list of observation state values
-        :type observations: tuple / list
 
         :arg sigma: variance of independent observation error
         :type sigma: float
 
-        :arg r_loc: radius of coarsening localisation for importance weight update
+        Optional Arguments:
+
+        :arg r_loc: radius of coarsening localisation for importance weight update. Default: 0
         :type r_loc: int
 
     """
@@ -63,9 +59,6 @@ def weight_update(ensemble, weights, observation_operator, observation_coords,
 
     # difference in the observation space
     p = 2
-    with timed_stage("Initial observation instance"):
-        observation_operator.update_observation_operator(observation_coords,
-                                                         observations)
     D = []
     for i in range(n):
 
