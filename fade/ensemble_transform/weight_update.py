@@ -73,10 +73,7 @@ def weight_update(ensemble, weights, observation_operator, sigma, r_loc=0):
     with timed_stage("Coarsening localisation"):
         W = []
         for i in range(n):
-            if r_loc == 0:
-                W.append(D[i])
-            else:
-                W.append(CoarseningLocalisation(D[i], r_loc))
+            W.append(CoarseningLocalisation(D[i], r_loc))
 
     # Find Gaussian likelihood
     with timed_stage("Likelihood calculation"):
