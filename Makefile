@@ -7,6 +7,8 @@ lint:
 	@flake8 tests
 	@echo "    Linting fade demo suite"
 	@flake8 examples
+	@echo "    Linting fade tutorial suite"
+	@flake8 tutorials
 
 test:
 	@echo "    Running all tests"
