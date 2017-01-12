@@ -58,8 +58,10 @@ def seamless_coupling_step(Vc, Vf, n, oo_c, oo_f, coords, obs, sigma):
 
     # generate coarse and fine posterior
     r_loc = 0
-    weights_c = weight_update(ensemble_c, weights_c, oo_c, coords, obs, sigma, r_loc)
-    weights_f = weight_update(ensemble_f, weights_f, oo_f, coords, obs, sigma, r_loc)
+    oo_c.update_observation_operator(coords, obs)
+    oo_f.update_observation_operator(coords, obs)
+    weights_c = weight_update(ensemble_c, weights_c, oo_c, sigma)
+    weights_f = weight_update(ensemble_f, weights_f, oo_f, sigma)
     Xc, Xf = seamless_coupling_update(ensemble_c, ensemble_f, weights_c, weights_f, r_loc, r_loc)
 
     # generate coarse / fine mean at the cell which contains coordinate of observation

@@ -131,8 +131,9 @@ def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
             psi_to_dgProjectors[i].project()
 
         # update weights and ensmeble transform
+        observation_operator.update_observation_operator(coords[k], observations[k])
         weights = weight_update(psi_dg_ensemble, weights,
-                                observation_operator, coords[k], observations[k], R, r_loc)
+                                observation_operator, R, r_loc)
 
         # effective sample size
         eff = 0
