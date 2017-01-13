@@ -35,7 +35,9 @@ for i in range(ny):
 coords = tuple(coords)
 obs = tuple(obs)
 
-observation_operator = Observations(V)
+sigma = 2.0
+
+observation_operator = Observations(V, sigma)
 
 # range of sample sizes
 ns = 4 * (2 ** np.linspace(0, 7, 8))
@@ -46,7 +48,7 @@ time_rloc_1 = np.zeros(len(ns))
 
 
 # define the ensemble transform update step
-def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
+def ensemble_transform_step(V, n, observation_operator, coords, obs, lf):
 
     # generate ensemble
     ensemble = []
@@ -59,7 +61,7 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
 
     # generate posterior
     observation_operator.update_observation_operator(coords, obs)
-    weights = weight_update(ensemble, weights, observation_operator, sigma)
+    weights = weight_update(ensemble, weights, observation_operator)
     X = ensemble_transform_update(ensemble, weights, lf)
 
     # generate mean
@@ -68,8 +70,6 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma, lf):
         M += (1 / float(n)) * X[i].dat.data[0]
     return M
 
-
-sigma = 2.0
 
 niter = 1
 
@@ -86,11 +86,11 @@ for i in range(len(ns)):
 
         a0 = time.time()
         k_rloc_0 = ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs,
-                                           sigma, lf0)
+                                           lf0)
         b0 = time.time()
         a1 = time.time()
         k_rloc_1 = ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs,
-                                           sigma, lf1)
+                                           lf1)
         b1 = time.time()
 
         temp_time_rloc_0[j] = b0 - a0

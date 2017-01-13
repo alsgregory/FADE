@@ -1,4 +1,4 @@
-""" weight update calculation for an ensemble and observations - NB: Independent gaussian observation error! """
+""" weight update calculation for an ensemble and observations """
 
 from __future__ import division
 
@@ -16,9 +16,10 @@ from fade.localisation import *
 from pyop2.profiling import timed_stage
 
 
-def weight_update(ensemble, weights, observation_operator, sigma, r_loc=0):
+def weight_update(ensemble, weights, observation_operator, r_loc=0):
 
-    """ Calculates the importance weights of ensemble members around assumed gaussian observations
+    """ Calculates the importance weights of ensemble members around observations with assumed
+        Gaussian error
 
         :arg ensemble: list of :class:`Function`s in the ensemble
         :type ensemble: tuple / list
@@ -29,9 +30,6 @@ def weight_update(ensemble, weights, observation_operator, sigma, r_loc=0):
         :arg observation_operator: the :class:`Observations` for the assimilation problem - updated
                                    with observations and coordinates for the current assimilation step
         :type observation_operator: :class:`Observations`
-
-        :arg sigma: variance of independent observation error
-        :type sigma: float
 
         Optional Arguments:
 
@@ -64,7 +62,7 @@ def weight_update(ensemble, weights, observation_operator, sigma, r_loc=0):
 
         with timed_stage("Calculating observation squared differences"):
             weights[i].dat.data[:] = np.log(weights[i].dat.data[:])
-            weights[i].assign((-(1 / (2 * sigma)) *
+            weights[i].assign((-(1 / (2 * observation_operator.R)) *
                                observation_operator.difference(ensemble[i], p)) + weights[i])
 
         D.append(weights[i])
@@ -78,7 +76,8 @@ def weight_update(ensemble, weights, observation_operator, sigma, r_loc=0):
     # Find Gaussian likelihood
     with timed_stage("Likelihood calculation"):
         for j in range(n):
-            W[j].dat.data[:] = (1 / np.sqrt(2 * np.pi * sigma)) * np.exp(W[j].dat.data[:])
+            W[j].dat.data[:] = ((1 / np.sqrt(2 * np.pi * observation_operator.R)) *
+                                np.exp(W[j].dat.data[:]))
 
     # normalize and check weights
     t = Function(fs)

@@ -11,7 +11,7 @@ from fade.utils import *
 
 class Observations(object):
 
-    def __init__(self, fs):
+    def __init__(self, fs, R):
 
         """ Initializes projections for ensemble members to be assimilated via an observation
             operator. Once updated with new set of coordinates and observations, one can
@@ -20,10 +20,21 @@ class Observations(object):
             :arg fs: :class:`FunctionSpace` of the functions in the ensemble to be assimilated
             :type fs: :class:`FunctionSpace`
 
+            :arg R: This is the variance of the independent Gaussian measurement error for
+                    each basis coefficient
+            :type R: float
+
         """
 
         self.mesh = fs.mesh()
         self.fs = fs
+
+        # measurement error variance
+        self.R = R
+
+        # check that the variance is above 0 (otherwise perfect observations)
+        if self.R <= 0:
+            raise ValueError('Variance of measurement error needs to be greater than 0')
 
         # define the DG0 function space
         self.cell_fs = FunctionSpace(self.mesh, 'DG', 0)

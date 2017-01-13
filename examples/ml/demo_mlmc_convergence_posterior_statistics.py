@@ -34,12 +34,12 @@ sigma = 2.0
 fs_hierarchy = tuple([FunctionSpace(m, 'DG', 0) for m in mesh_hierarchy])
 
 # observation operator hierarchy
-oo_hierarchy = tuple([Observations(fs) for fs in fs_hierarchy])
+oo_hierarchy = tuple([Observations(fs, sigma) for fs in fs_hierarchy])
 
 
 # define the function to calculate the multilevel monte carlo estimate of
 # posterior mean
-def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs, sigma):
+def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs):
 
     eh = EnsembleHierarchy(fs_hierarchy)
     L = len(fs_hierarchy) - 1
@@ -66,8 +66,8 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs, sigma):
         r_loc = 0
         oo_hierarchy[i].update_observation_operator(coords, obs)
         oo_hierarchy[i + 1].update_observation_operator(coords, obs)
-        weights_c = weight_update(coarse, weights_c, oo_hierarchy[i], sigma)
-        weights_f = weight_update(fine, weights_f, oo_hierarchy[i + 1], sigma)
+        weights_c = weight_update(coarse, weights_c, oo_hierarchy[i])
+        weights_f = weight_update(fine, weights_f, oo_hierarchy[i + 1])
 
         # transform / couple
         new_coarse, new_fine = seamless_coupling_update(coarse,
@@ -113,7 +113,7 @@ for i in range(s):
     for j in range(niter):
 
         m_func, v_func = mlmc_estimate(N0s[i], fs_hierarchy, means,
-                                       oo_hierarchy, coords, obs, sigma)
+                                       oo_hierarchy, coords, obs)
 
         temp_rmse_func[j] = np.square(m_func)
 

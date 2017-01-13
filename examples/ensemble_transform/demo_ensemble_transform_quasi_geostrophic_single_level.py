@@ -73,7 +73,7 @@ def get_observations(dg_fs, cg_fs, dt, T, var, R, ny):
 
 
 def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
-                                         dt, T, var, R,
+                                         dt, T, var,
                                          observation_operator, coords, observations):
 
     mesh = dg_fs.mesh()
@@ -133,7 +133,7 @@ def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
         # update weights and ensmeble transform
         observation_operator.update_observation_operator(coords[k], observations[k])
         weights = weight_update(psi_dg_ensemble, weights,
-                                observation_operator, R, r_loc)
+                                observation_operator, r_loc)
 
         # effective sample size
         eff = 0
@@ -166,9 +166,6 @@ def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
 # variance of random forcing
 var = 2.0
 
-# observation operator
-observation_operator = Observations(dg_fs)
-
 # assimilation parameters (every 1.0 time we have an assimilation step)
 dt = 1.0
 T = 10.0
@@ -176,13 +173,16 @@ ny = 150
 N = 25
 R = 1e-2
 
+# observation operator
+observation_operator = Observations(dg_fs, R)
+
 # run simulation
 print "finding observations..."
 coords, observations, refFunctions = get_observations(dg_fs, cg_fs, dt, T, var, R, ny)
 
 print "simulating ensemble transform mean of potential vorticity..."
 meanFunctions = quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
-                                                     dt, T, var, R,
+                                                     dt, T, var,
                                                      observation_operator, coords, observations)
 
 # find error
