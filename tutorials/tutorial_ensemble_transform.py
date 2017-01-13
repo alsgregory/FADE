@@ -1,5 +1,5 @@
-# Tutorial of an ensemble transform particle step in FADE
-# =======================================================
+# Tutorial of an ensemble transform particle filter step in FADE
+# ==============================================================
 #
 # This is a tutorial on how to compute an ensemble transform
 # update, that takes the place of a random resampling step
