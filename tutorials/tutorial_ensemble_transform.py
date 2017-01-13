@@ -65,6 +65,8 @@ weights = []
 weights.append(Function(V).assign(0.25))
 weights.append(Function(V).assign(0.75))
 
+weights = tuple(weights)
+
 # So that we can check that the ensemble mean is preserved after the
 # transformation, let's compute it.
 
