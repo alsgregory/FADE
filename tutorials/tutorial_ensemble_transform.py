@@ -92,5 +92,5 @@ for i in range(n):
     new_ensemble_mean.dat.data[:] += np.multiply(ensemble[i].dat.data[:],
                                                  weights[i].dat.data[:])
 
-print 'error between ensemble and transformed ensemble means: ' 
+print 'error between ensemble and transformed ensemble means: '
 print norm(assemble(new_ensemble_mean - ensemble_mean))
