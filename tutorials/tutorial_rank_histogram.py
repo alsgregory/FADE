@@ -40,7 +40,7 @@ V = FunctionSpace(mesh, 'DG', 0)
 # randomly from a standard normal distribution.
 
 ny = 2
-nty = 200
+nty = 50
 
 coords = []
 observations = []
@@ -58,7 +58,7 @@ for i in range(nty):
 # To make an ensemble, a list or tuple of `n` functions can be
 # generated.
 
-n = 40
+n = 10
 ensemble = []
 for j in range(n):
     f = Function(V)
