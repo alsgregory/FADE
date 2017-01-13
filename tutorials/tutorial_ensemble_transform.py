@@ -33,7 +33,8 @@ mesh_hierarchy = MeshHierarchy(mesh, L)
 
 # This creates a mesh hierarchy of length `L`.
 #
-# Now let's build a function space on the finest level of the mesh.
+# Now let's build a function space on the finest level of the mesh
+# hierarchy.
 
 V = FunctionSpace(mesh_hierarchy[-1], 'DG', 0)
 
