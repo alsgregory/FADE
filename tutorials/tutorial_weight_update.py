@@ -81,7 +81,7 @@ for i in range(ny):
 # One can initialize the object and then is required to update it with
 # new observations and coordinates every time a new set becomes available.
 
-observation_operator = Observations(V)
+observation_operator = Observations(V, R)
 observation_operator.update_observation_operator(coords, obs)
 
 # So that we can compare the error away from the reference function, let's
@@ -96,7 +96,7 @@ for i in range(n):
 # of the ensemble member functions. Calling this method overwrites the prior
 # weight functions.
 
-weight_update(ensemble, weights, observation_operator, R)
+weight_update(ensemble, weights, observation_operator)
 
 # Compute the posterior mean in the same way as we did with the prior weights.
 

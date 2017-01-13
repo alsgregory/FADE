@@ -24,7 +24,9 @@ V = FunctionSpace(mesh, 'DG', 0)
 coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
 
-observation_operator = Observations(V)
+sigma = 2.0
+
+observation_operator = Observations(V, sigma)
 
 # denote the true mean of the posterior
 TrueMean = 0.7
@@ -37,7 +39,7 @@ rmse = np.zeros(len(ns))
 
 
 # define the ensemble transform update step
-def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma):
+def ensemble_transform_step(V, n, observation_operator, coords, obs):
 
     # generate ensemble
     ensemble = []
@@ -51,7 +53,7 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma):
     # generate posterior
     r_loc = 0
     observation_operator.update_observation_operator(coords, obs)
-    weights = weight_update(ensemble, weights, observation_operator, sigma)
+    weights = weight_update(ensemble, weights, observation_operator)
     X = ensemble_transform_update(ensemble, weights, r_loc)
 
     # generate mean
@@ -61,8 +63,6 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, sigma):
     return M
 
 
-sigma = 2.0
-
 niter = 10
 
 for i in range(len(ns)):
@@ -71,7 +71,7 @@ for i in range(len(ns)):
 
     for j in range(niter):
 
-        k = ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs, sigma)
+        k = ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs)
 
         temp_mse[j] = np.square(k - TrueMean)
 

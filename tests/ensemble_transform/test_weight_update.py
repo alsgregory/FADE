@@ -32,9 +32,9 @@ def test_weight_update_perfect_observation():
 
     # compute weights - should be even
     sigma = 0.1
-    observation_operator = Observations(fs)
+    observation_operator = Observations(fs, sigma)
     observation_operator.update_observation_operator(coord, obs)
-    weights = weight_update(ensemble, weights, observation_operator, sigma, r_loc)
+    weights = weight_update(ensemble, weights, observation_operator, r_loc)
 
     # check weights are even
     assert np.max(np.abs(weights[0].dat.data[:] - 0.5)) < 1e-5

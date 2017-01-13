@@ -40,12 +40,12 @@ def test_coupling_mean_preserving():
 
     # compute weights - should be even
     sigma = 0.1
-    observation_operator_c = Observations(fsc)
-    observation_operator_f = Observations(fsf)
+    observation_operator_c = Observations(fsc, sigma)
+    observation_operator_f = Observations(fsf, sigma)
     observation_operator_c.update_observation_operator(coord, obs)
     observation_operator_f.update_observation_operator(coord, obs)
-    weights_c = weight_update(ensemble_c, weights_c, observation_operator_c, sigma, r_loc)
-    weights_f = weight_update(ensemble_f, weights_f, observation_operator_f, sigma, r_loc)
+    weights_c = weight_update(ensemble_c, weights_c, observation_operator_c, r_loc)
+    weights_f = weight_update(ensemble_f, weights_f, observation_operator_f, r_loc)
 
     # compute ensemble transform - should be 1.0's
     new_ensemble_c, new_ensemble_f = seamless_coupling_update(ensemble_c, ensemble_f,
@@ -89,12 +89,12 @@ def test_reset_weights():
 
     # compute weights - should be even
     sigma = 0.1
-    observation_operator_c = Observations(fsc)
-    observation_operator_f = Observations(fsf)
+    observation_operator_c = Observations(fsc, sigma)
+    observation_operator_f = Observations(fsf, sigma)
     observation_operator_c.update_observation_operator(coord, obs)
     observation_operator_f.update_observation_operator(coord, obs)
-    weights_c = weight_update(ensemble_c, weights_c, observation_operator_c, sigma, r_loc)
-    weights_f = weight_update(ensemble_f, weights_f, observation_operator_f, sigma, r_loc)
+    weights_c = weight_update(ensemble_c, weights_c, observation_operator_c, r_loc)
+    weights_f = weight_update(ensemble_f, weights_f, observation_operator_f, r_loc)
 
     # compute ensemble transform - should be 1.0's
     seamless_coupling_update(ensemble_c, ensemble_f, weights_c, weights_f, r_loc_cost,

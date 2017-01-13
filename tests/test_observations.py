@@ -18,8 +18,10 @@ def test_observation_one_element_node():
 
     obs = tuple([1])
 
+    R = 0.05
+
     # check that only cell is showing as containing obs
-    obs_operator = Observations(fs)
+    obs_operator = Observations(fs, R)
     obs_operator.update_observation_operator(coord, obs)
 
     assert obs_operator.cells == np.array([0])
@@ -34,12 +36,14 @@ def test_observation_one_element_difference():
 
     obs = tuple([2])
 
+    R = 0.05
+
     # iterate over degrees for in-function
     d = tuple([1, 2])
     for deg in d:
         fs = FunctionSpace(mesh, 'DG', deg)
 
-        obs_operator = Observations(fs)
+        obs_operator = Observations(fs, R)
         obs_operator.update_observation_operator(coord, obs)
 
         # make in-function for difference
@@ -63,7 +67,9 @@ def test_observation_cells_and_nodes():
 
     obs = tuple([2.0])
 
-    obs_operator = Observations(fs)
+    R = 0.05
+
+    obs_operator = Observations(fs, R)
 
     obs_operator.update_observation_operator(coord, obs)
 
@@ -81,7 +87,9 @@ def test_observation_average():
 
     obs = tuple([2.0, 3.0])
 
-    obs_operator = Observations(fs)
+    R = 0.05
+
+    obs_operator = Observations(fs, R)
 
     obs_operator.update_observation_operator(coord, obs)
 
@@ -97,7 +105,9 @@ def test_observation_difference():
 
     obs = tuple([2, 2])
 
-    obs_operator = Observations(fs)
+    R = 0.05
+
+    obs_operator = Observations(fs, R)
 
     f = Function(fs)
 
@@ -119,7 +129,9 @@ def test_update_observation_difference():
 
     obs = tuple([2.0])
 
-    obs_operator = Observations(fs)
+    R = 0.05
+
+    obs_operator = Observations(fs, R)
 
     f = Function(fs)
 
@@ -150,7 +162,9 @@ def test_no_observations():
 
     obs = tuple([])
 
-    obs_operator = Observations(fs)
+    R = 0.05
+
+    obs_operator = Observations(fs, R)
 
     obs_operator.update_observation_operator(coord, obs)
 
@@ -172,7 +186,9 @@ def test_no_observations_2():
 
     obs = tuple([1.0])
 
-    obs_operator = Observations(fs)
+    R = 0.05
+
+    obs_operator = Observations(fs, R)
 
     obs_operator.update_observation_operator(coord, obs)
 
