@@ -34,7 +34,9 @@ def CoarseningLocalisation(f, r_loc):
 
     # check r_loc is within hierarchy
     if r_loc < 0 or (lvl - r_loc) < 0:
-        raise ValueError('radius of localisation needs to be from 0 to max level of hierarchy')
+        raise ValueError('Radius of localisation needs to be from 0 to max level of hierarchy. ' +
+                         'Try using an original mesh that can be recursively coarsened in all ' +
+                         'dimensions by factor of 2')
 
     # inject down
     fc = Function(FunctionSpace(hierarchy[lvl - r_loc], fs.ufl_element()))
