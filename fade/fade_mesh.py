@@ -13,9 +13,9 @@ def FadeMesh(mesh_type, *args):
         under the returned finest mesh, up until the coarsest available mesh.
 
         Example:
-            FadeMesh(UnitSquareMesh, 16, 16) returns
-            mesh = UnitSquareMesh(16, 16) which is part of a hierarchy where the coarsest mesh
-            corresponds to a `UnitSquareMesh` with 2 cells in each geometric dimension.
+            FadeMesh("UnitIntervalMesh", 16) returns
+            mesh = UnitIntervalMesh(16) which is part of a hierarchy, size 5, where the coarsest mesh
+            corresponds to a `UnitIntervalMesh` with 1 cell.
 
         :arg mesh_type: The string of the type of :class:`Mesh` Function one requires
         :type mesh_type: str
