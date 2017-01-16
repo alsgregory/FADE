@@ -15,13 +15,12 @@ import matplotlib.pyplot as plot
 import numpy as np
 
 
-# create the mesh hierarchy (needed for coarsening localisation)
-mesh = RectangleMesh(30, 6, 5, 1)
-mesh_hierarchy = MeshHierarchy(mesh, 3)
+# design the fade type of mesh
+mesh = FadeMesh("RectangleMesh", 240, 48, 5, 1)
 
 # define function spaces
-dg_fs = FunctionSpace(mesh_hierarchy[3], 'DG', 1)
-cg_fs = FunctionSpace(mesh_hierarchy[3], 'CG', 1)
+dg_fs = FunctionSpace(mesh, 'DG', 1)
+cg_fs = FunctionSpace(mesh, 'CG', 1)
 
 
 # define initial condition ufl expression
