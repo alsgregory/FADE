@@ -61,6 +61,27 @@ def test_16_cell_2d():
     assert mesh == h[-1]
 
 
+def test_rectangle_1():
+
+    mesh = FadeMesh("RectangleMesh", 30, 5, 1, 1)
+
+    h, l = get_level(mesh)
+
+    assert mesh.num_cells() == 300
+    assert len(h) == 1
+
+
+def test_rectangle_2():
+
+    mesh = FadeMesh("RectangleMesh", 30, 6, 1, 1)
+
+    h, l = get_level(mesh)
+
+    assert mesh.num_cells() == 360
+    assert len(h) == 2
+    assert h[0].num_cells() == 90
+
+
 if __name__ == "__main__":
     import os
     pytest.main(os.path.abspath(__file__))
