@@ -14,13 +14,10 @@ import matplotlib.pyplot as plot
 import time
 
 
-# create the mesh hierarchy (needed for coarsening localisation)
-mesh = UnitIntervalMesh(5)
-mesh_hierarchy = MeshHierarchy(mesh, 1)
+# design the fade type of mesh
+mesh = FadeMesh("UnitIntervalMesh", 10)
 
-# set used mesh to the bottom mesh
-mesh = mesh_hierarchy[-1]
-
+# generate function space
 V = FunctionSpace(mesh, 'DG', 0)
 fs = FunctionSpace(mesh, 'DG', 0)
 

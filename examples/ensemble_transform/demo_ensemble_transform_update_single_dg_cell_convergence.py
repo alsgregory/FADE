@@ -11,13 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plot
 
 
-# create the mesh hierarchy (needed for coarsening localisation)
-mesh = UnitIntervalMesh(1)
-mesh_hierarchy = MeshHierarchy(mesh, 1)
+# design the fade type of mesh
+mesh = FadeMesh("UnitIntervalMesh", 1)
 
-# set used mesh to the bottom mesh
-mesh = mesh_hierarchy[0]
-
+# generate function space
 V = FunctionSpace(mesh, 'DG', 0)
 
 # the coordinates of observation (only cell)
