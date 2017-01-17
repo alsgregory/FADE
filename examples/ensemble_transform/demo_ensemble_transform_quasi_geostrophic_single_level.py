@@ -23,15 +23,6 @@ dg_fs = FunctionSpace(mesh, 'DG', 1)
 cg_fs = FunctionSpace(mesh, 'CG', 1)
 
 
-# define initial condition ufl expression
-def ic(mesh):
-    x = SpatialCoordinate(mesh)
-    xp = np.random.uniform(0.1, 0.25)
-    ufl_expression = (conditional(x[1] > (0.5 + xp) + (0.25 * sin(4 * pi * (x[0]))), 1.0, 0.0) +
-                      conditional(x[1] < (0.5 - xp) + (0.25 * sin(4 * pi * (x[0]))), -1.0, 0.0))
-    return ufl_expression
-
-
 def get_observations(dg_fs, cg_fs, dt, T, var, R, ny):
 
     mesh = dg_fs.mesh()
@@ -41,7 +32,7 @@ def get_observations(dg_fs, cg_fs, dt, T, var, R, ny):
     observations = []
     refFile = File("reference_q.pvd")
     QG = quasi_geostrophic(dg_fs, cg_fs, var)
-    QG.initial_condition(ic(mesh))
+    QG.initial_condition(random_ic(dg_fs, cg_fs))
     refFile.write(QG.q_)
 
     dg0_fs = FunctionSpace(mesh, 'DG', 0)
@@ -78,7 +69,7 @@ def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
     mesh = dg_fs.mesh()
 
     # radius of localisation
-    r_loc = 3
+    r_loc = 2
 
     # mean file
     meanqFile = File("et_mean_q.pvd")
@@ -100,7 +91,7 @@ def quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
     weights = []
     for i in range(N):
         object_ensemble.append(quasi_geostrophic(dg_fs, cg_fs, var))
-        object_ensemble[i].initial_condition(ic(mesh))
+        object_ensemble[i].initial_condition(random_ic(dg_fs, cg_fs))
         psi_ensemble.append(object_ensemble[i].psi_)
         q_ensemble.append(object_ensemble[i].q_)
         psi_dg_ensemble.append(Function(dg_fs))
@@ -167,10 +158,10 @@ var = 2.0
 
 # assimilation parameters (every 1.0 time we have an assimilation step)
 dt = 1.0
-T = 10.0
+T = 75.0
 ny = 150
 N = 25
-R = 1e-2
+R = 2e-2
 
 # observation operator
 observation_operator = Observations(dg_fs, R)
