@@ -11,8 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plot
 
 
-# design the fade type of mesh
-mesh = FadeMesh("UnitIntervalMesh", 1)
+# generate a mesh from a mesh hierarchy
+mesh_hierarchy = MeshHierarchy(UnitIntervalMesh(1), 0)
+mesh = mesh_hierarchy[-1]
 
 # generate function space
 V = FunctionSpace(mesh, 'DG', 0)
