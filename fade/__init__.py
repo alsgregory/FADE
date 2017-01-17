@@ -7,7 +7,6 @@ from firedrake import *  # noqa
 from fade.utils import *  # noqa
 from fade.observations import *  # noqa
 from fade.localisation import *  # noqa
-from fade.fade_mesh import *  # noqa
 
 # import ensemble transform modules
 from fade.ensemble_transform.weight_update import *  # noqa

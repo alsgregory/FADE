@@ -24,13 +24,12 @@ from fade import *
 import numpy as np
 
 
-# First of all we require a mesh. To be used within the FADE framework
-# the call for the mesh is slightly different to the one in Firedrake.
-# For localisation that is used within FADE, it is also ideal to have
-# the number of cells in each dimension to be able to be coarsened multiple
-# times by a factor of 2.
+# First of all we require a mesh. For the type of localisation used in FADE
+# this mesh is required to be part of a hierarchy. Let's work on the finest
+# mesh in a hierarchy of length 2.
 
-mesh = FadeMesh("UnitSquareMesh", 2, 2)
+mesh_hierarchy = MeshHierarchy(UnitSquareMesh(1, 1), 1)
+mesh = mesh_hierarchy[-1]
 
 # Now let's build a function space on the mesh.
 

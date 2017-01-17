@@ -15,8 +15,9 @@ import matplotlib.pyplot as plot
 import numpy as np
 
 
-# design the fade type of mesh
-mesh = FadeMesh("RectangleMesh", 240, 48, 5, 1)
+# generate a mesh from a mesh hierarchy
+mesh_hierarchy = MeshHierarchy(RectangleMesh(30, 6, 5, 1), 3)
+mesh = mesh_hierarchy[-1]
 
 # define function spaces
 dg_fs = FunctionSpace(mesh, 'DG', 1)
