@@ -105,7 +105,7 @@ for k in range(nt):
             sums += weights[j]
 
         # check that all weights sum to 1
-        assert norm(assemble(sums)) == 1.0
+        assert np.abs(norm(assemble(sums)) - 1.0) < 1e-5
 
         # compute weighted mean error
         error[c] = norm(assemble(mean - references[c]))
