@@ -11,6 +11,16 @@ Then, to install firedrake_da, type the following commands into the terminal:
 1. `git clone https://github.com/firedrake_da `
 2. `pip install -e ./firedrake_da`
 
+## Documentation
+
+To build the documentation, type
+
+`make html`
+
+whilst in the `docs` repository, or alternatively go to
+
+[![Documentation Status](https://readthedocs.org/projects/fade/badge/?version=latest)](http://fade.readthedocs.io/en/latest/?badge=latest)
+
 ## Contact
 For any enquiries, please contact: a.gregory14@imperial.ac.uk
 
