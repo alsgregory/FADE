@@ -174,8 +174,8 @@ coords, observations, refFunctions = get_observations(dg_fs, cg_fs, dt, T, var, 
 
 print "simulating ensemble transform mean of potential vorticity..."
 meanFunctions, q_ensemble = quasi_geostrophic_ensemble_transform(dg_fs, cg_fs, N,
-                                                     dt, T, var,
-                                                     observation_operator, coords, observations)
+                                                                 dt, T, var,
+                                                                 observation_operator, coords, observations)
 
 
 """ Root Mean Square Error """
