@@ -248,9 +248,9 @@ def generate_localised_cost_tensor(ensemble_f, ensemble2_f, r_loc, option="kerne
             cost_tensor.dat.data[:] = x.dat.data[:]
         else:
             for i in range(n):
+                x = CoarseningLocalisation(cost_funcs[i][:], r_loc)
                 for j in range(n):
-                    x = CoarseningLocalisation(cost_funcs[i][j], r_loc)
-                    cost_tensor.dat.data[:, i, j] = x.dat.data[:]
+                    cost_tensor.dat.data[:, i, j] = x[j].dat.data[:]
 
     return cost_tensor
 

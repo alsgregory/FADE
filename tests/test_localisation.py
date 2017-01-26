@@ -85,13 +85,30 @@ def test_coarsening_localisation_no_hierarchy():
 
         WLoc_ = Function(fs).assign(WLoc)
 
-        if r == 1:
-            with pytest.raises(Exception):
-                CoarseningLocalisation(WLoc, r)
+        WLoc = CoarseningLocalisation(WLoc, r)
+        assert norm(assemble(WLoc - WLoc_)) == 0
 
-        if r == 0:
-            WLoc = CoarseningLocalisation(WLoc, r)
-            assert norm(assemble(WLoc - WLoc_)) == 0
+
+def test_coarsening_localisation_list():
+
+    mesh = UnitIntervalMesh(1)
+
+    mesh_hierarchy = MeshHierarchy(mesh, 1)
+
+    r_loc = 1
+
+    fs_hierarchy = tuple([FunctionSpace(m, 'DG', 0) for m in mesh_hierarchy])
+
+    WLoc = []
+    for i in range(2):
+        WLoc.append(Function(fs_hierarchy[1]))
+        WLoc[i].dat.data[0] = 1.0
+
+    WLoc = CoarseningLocalisation(WLoc, r_loc)
+
+    for i in range(2):
+        assert np.abs(0.5 - WLoc[i].dat.data[0]) < 1e-5
+        assert np.abs(0.5 - WLoc[i].dat.data[1]) < 1e-5
 
 
 if __name__ == "__main__":
