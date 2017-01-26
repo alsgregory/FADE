@@ -14,34 +14,52 @@ def CoarseningLocalisation(f, r_loc):
     """ Creates a :class:`Function` that localises another :class:`Function` using injection.
         Needs fs to be part of a hierarchy in mg firedrake (even in standard etpf).
 
-        :arg f: The :class:`Function` for localising
-        :type f: :class:`Function:
+        :arg f: The :class:`Function` or list of :class:`Function`s for localising
+        :type f: :class:`Function: / list of :class:`Function`s
 
         :arg r_loc: The radius of localisation
         :type r_loc: int
 
     """
 
+    # check if f is an ensemble of functions
+    if (isinstance(f, list) is True) or (isinstance(f, tuple) is True):
+        # function space
+        fs = f[0].function_space()
+
+    else:
+        # function space
+        fs = f.function_space()
+
+    # check for hierarchy and if not in one, cap r_loc at 0
+    hierarchy, lvl = get_level(fs.mesh())
+    if lvl is None:
+        r_loc = 0
+
     # if no localisation return same
     if r_loc == 0:
         return f
-
-    # function space and hierarchy check
-    fs = f.function_space()
-
-    hierarchy, lvl = get_level(f.function_space().mesh())
-    assert lvl is not None
 
     # check r_loc is within hierarchy
     if r_loc < 0 or (lvl - r_loc) < 0:
         raise ValueError('Radius of localisation needs to be from 0 to max level of hierarchy.')
 
-    # inject down
+    # create function to inject to
     fc = Function(FunctionSpace(hierarchy[lvl - r_loc], fs.ufl_element()))
-    inject(f, fc)
 
-    # reset f and prolong back again
-    f.assign(0)
-    prolong(fc, f)
+    # inject down
+    if (isinstance(f, list) is True) or (isinstance(f, tuple) is True):
+        for i in range(len(f)):
+            inject(f[i], fc)
+
+            # reset f and prolong back again
+            f[i].assign(0)
+            prolong(fc, f[i])
+    else:
+        inject(f, fc)
+
+        # reset f and prolong back again
+        f.assign(0)
+        prolong(fc, f)
 
     return f

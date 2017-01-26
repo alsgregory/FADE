@@ -6,8 +6,6 @@ from __future__ import absolute_import
 
 from firedrake import *
 
-from firedrake.mg.utils import get_level
-
 import numpy as np
 
 from fade.observations import *
@@ -42,13 +40,6 @@ def weight_update(ensemble, weights, observation_operator, r_loc=0):
         raise ValueError('ensemble cannot be indexed')
     if len(weights) < 1:
         raise ValueError('weights cannot be indexed')
-    mesh = ensemble[0].function_space().mesh()
-
-    # check that part of a hierarchy - so that one can coarsen localise
-    hierarchy, lvl = get_level(mesh)
-    if lvl is None:
-        raise ValueError('mesh for ensemble members needs to be part of ' +
-                         'hierarchy for coarsening loc')
 
     # function space
     fs = ensemble[0].function_space()
@@ -69,9 +60,7 @@ def weight_update(ensemble, weights, observation_operator, r_loc=0):
 
     # now implement coarsening localisation and find weights
     with timed_stage("Coarsening localisation"):
-        W = []
-        for i in range(n):
-            W.append(CoarseningLocalisation(D[i], r_loc))
+        W = CoarseningLocalisation(D, r_loc)
 
     # Find Gaussian likelihood
     with timed_stage("Likelihood calculation"):
