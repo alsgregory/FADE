@@ -103,7 +103,7 @@ coordinates and a corresponding list of observations, the following commands can
     weights = weight_update(ensemble, weights, observation_operator)
 
 Localisation can be used here, by adding an optional argument to the method above. For a full
-summary of how this implemented in FADE see :ref:`Localisation <localisation.html>`_.
+summary of how this implemented in FADE see :ref:`Localisation <localisation>`_.
 
 Ensemble-Transform Particle Filtering
 -------------------------------------
@@ -123,7 +123,9 @@ out. In the variants that are used in this package, the Ensemble Transform Parti
 transform is implemented. This actually makes the two terms in the approximation above equal. One can
 carry out this transform using:
 
-.. code:: ensemble = ensemble_transform_update(ensemble, weights)
+.. code::
+    
+    ensemble = ensemble_transform_update(ensemble, weights)
 
 Localisation can be used as in the weight update case, this again being specified using an optional
 argument.
