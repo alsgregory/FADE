@@ -4,7 +4,16 @@ Ensemble-Based Data Assimilation
 Overview
 --------
 
-The ensemble data assimilation problem is defined in this section. Consider
+Data assimilation is the incorporation of data into a forecast model of an uncertain process.
+It is used frequently in many fields ranging from finance to weather forecasting. Filtering is
+a type of data assimilation, where one is interested in the forecast distribution
+of an uncertain temporal (and spatial) process at a certain time in the future conditional on
+observations of the actual event given up until that time. This Python package allows one to apply
+a number of filtering / forecast verification techniques on functions that are finite-element
+discretized solutions to PDEs formulated in the novel Firedrake software, developed at Imperial
+College London.
+
+The ensemble filtering (particle filtering) problem is defined in this section. Consider
 a 1D function :math:`f_{t}(x) \in V`, where :math:`V` is a function space, at time
 :math:`t` that either has a random initial condition, :math:`f_{0} \sim \eta`,
 or a random component, such as a stochastic forcing term. An ensemble of these
@@ -93,6 +102,28 @@ coordinates and a corresponding list of observations, the following commands can
     # update the importance weights
     weights = weight_update(ensemble, weights, observation_operator)
 
+Localisation can be used here, by adding an optional argument to the method above. For a full
+summary of how this implemented in FADE see :ref:`Localisation <localisation.html>`_.
 
 Ensemble-Transform Particle Filtering
 -------------------------------------
+
+Using the data assimilation process above for a large number of assimilation steps can cause
+degeneracy amongst weights; where one normalized weight function tends towards one everywhere
+and every other one takes very small values. Many particle filtering algorithms counter this using
+resampling. The aim is to generate a new ensemble of functions :math:`\Big\{\tilde{f}^{i}_{t}\Big\}_{i=1,...,N}` with even weights, from the weighted ensemble found using an importance weight update
+above. This transform can be a random resampling process or a deterministic transformation; either
+way it is desirable to have
+
+.. math:: \frac{1}{N}\sum_{i=1}^{N}\tilde{f}_{t_{k}}^{i} \approx \sum_{i=1}^{N}w_{t_{k}}^{i}f_{t_{k}}^{i}.
+
+The main difference between variants of the particle filter is the way in which that step is carried
+out. In the variants that are used in this package, the Ensemble Transform Particle Filter (Reich,
+2011) and the corresponding multilevel Monte Carlo extension (Gregory et al, 2016), a deterministic
+transform is implemented. This actually makes the two terms in the approximation above equal. One can
+carry out this transform using:
+
+.. code:: ensemble = ensemble_transform_update(ensemble, weights)
+
+Localisation can be used as in the weight update case, this again being specified using an optional
+argument.
