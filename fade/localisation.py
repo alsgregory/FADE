@@ -44,6 +44,9 @@ def CoarseningLocalisation(f, r_loc):
     if r_loc < 0 or (lvl - r_loc) < 0:
         raise ValueError('Radius of localisation needs to be from 0 to max level of hierarchy.')
 
+    # make scale factor for number of finer subcells to coarse cell
+    scale = 2 ** (fs.mesh().geometric_dimension() * r_loc)
+
     # create function to inject to
     fc = Function(FunctionSpace(hierarchy[lvl - r_loc], fs.ufl_element()))
 
@@ -55,11 +58,13 @@ def CoarseningLocalisation(f, r_loc):
             # reset f and prolong back again
             f[i].assign(0)
             prolong(fc, f[i])
+            f[i].assign(f[i] * scale)
     else:
         inject(f, fc)
 
         # reset f and prolong back again
         f.assign(0)
         prolong(fc, f)
+        f.assign(f * scale)
 
     return f

@@ -72,10 +72,10 @@ def test_coarsening_cost_tensor():
     # this will aggregate the difference in one finer subcell between the one coarse cell
     r_loc = 1
     cost_tensor = generate_localised_cost_tensor(ensemble_f, ensemble_f, r_loc)
-    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - 0.5)) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - 0.5)) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - 0.5)) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - 0.5)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - 1)) < 1e-5
 
 
 def test_coarsening_cost_tensor_assembly():
@@ -94,10 +94,10 @@ def test_coarsening_cost_tensor_assembly():
     # this will aggregate the difference in one finer subcell between the one coarse cell
     r_loc = 1
     cost_tensor = generate_localised_cost_tensor(ensemble_f, ensemble_f, r_loc, "assembly")
-    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - 0.5)) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - 0.5)) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - 0.5)) < 1e-5
-    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - 0.5)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - 1)) < 1e-5
 
 
 def test_localisation_diff():
