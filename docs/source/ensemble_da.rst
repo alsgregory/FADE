@@ -48,9 +48,10 @@ with :math:`r_{t}^{per}` given by perturbing the basis coefficients by a random 
 .. math:: r_{t}^{per}(x) = \sum_{l=1}N_{l}(x)(\xi_{l} + \phi_{l}),
 
 :math:`j=1,...,n_{y}`, where :math:`\phi_{l} \sim N(0, R)` and :math:`x^{j}` are
-coordinates that the reference function is evaluated at. Denote the list of observations
-at time :math:`t` to be :math:`Y_{t}`. In FADE, one needs to initialize an object that
-carries out the projection of observations into ensemble space to compute likelihoods. This
+coordinates that the reference function is evaluated at. Note: this does mean that all basis
+coefficients are assumed to have independent measurement error in the reference function.
+Denote the list of observations at time :math:`t` to be :math:`Y_{t}`. In FADE, one needs to initialize an
+object that carries out the projection of observations into ensemble space to compute likelihoods. This
 is done via the following command:
 
 .. code::
@@ -103,7 +104,7 @@ coordinates and a corresponding list of observations, the following commands can
     weights = weight_update(ensemble, weights, observation_operator)
 
 Localisation can be used here, by adding an optional argument to the method above. For a full
-summary of how this implemented in FADE see :ref:`Localisation <localisation>`_.
+summary of how this implemented in FADE see :ref:`localisation`.
 
 Ensemble-Transform Particle Filtering
 -------------------------------------
