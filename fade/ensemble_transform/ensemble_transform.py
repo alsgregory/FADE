@@ -13,7 +13,7 @@ from fade.emd.emd_kernel import *
 from pyop2.profiling import timed_stage
 
 
-def ensemble_transform_update(ensemble, weights, r_loc):
+def ensemble_transform_update(ensemble, weights, r_loc=0):
 
     """ Computes the (localised) ensemble transform update in the etpf of a weighted ensemble
 
@@ -23,7 +23,9 @@ def ensemble_transform_update(ensemble, weights, r_loc):
         :arg weights: list of :class:`Function`s representing the importance weights
         :type weights: tuple / list
 
-        :arg r_loc: Radius of coarsening localisation for the cost functions
+        Optional Arguments:
+
+        :arg r_loc: Radius of coarsening localisation for the cost functions. Default: 0
         :type r_loc: int
 
     """
