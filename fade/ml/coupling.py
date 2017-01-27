@@ -16,7 +16,7 @@ import numpy as np
 from pyop2.profiling import timed_stage
 
 
-def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc_c, r_loc_f):
+def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc_c=0, r_loc_f=0):
 
     """ performs a seamless coupling (localised) ensemble transform update from a coupling
         between two weighted ensembles (coarse and fine) into two evenly weighted ensembles.
@@ -36,10 +36,12 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
                         ensemble
         :type weights_2: tuple / list
 
-        :arg r_loc_c: Radius of coarsening localisation for the coarse cost functions
+        Optional Arguments:
+
+        :arg r_loc_c: Radius of coarsening localisation for the coarse cost functions. Default: 0
         :type r_loc_c: int
 
-        :arg r_loc_f: Radius of coarsening localisation for the fine cost functions
+        :arg r_loc_f: Radius of coarsening localisation for the fine cost functions. Default: 0
         :type r_loc_f: int
 
     """
