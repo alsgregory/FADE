@@ -95,3 +95,23 @@ transform and coupling stage we use the single command:
     ensemble_coarse, ensemble_fine = seamless_coupling_update(ensemble_coarse, ensemble_fine,
                                                               weights_coarse, weights_fine,
                                                               r_loc_c, r_loc_f)
+
+Example
+-------
+
+As an example, consider two ensembles of functions, :math:`f_{l-1}^{i} \in V_{l-1}` and :math:`f_{l}^{i} \in V_{l}`,
+:math:`i=1,...,50`, and thus one ensemble lives on a coarse mesh in a hierarchy whilst the other lives on the mesh one
+level above it. Suppose that each function takes a single value across the whole domain, randomly drawn from the
+standard normal distribution. Each pair of functions in either ensemble are drawn independent samples from one another.
+Each ensemble of functions are both given posterior importance weight functions
+by conditioning them in the above manner around a single observation. Localisation is implemented such that all importance weights have the same value across the whole domain. Then the `seamless_coupling_update`
+command is used to transform the ensembles to generate evenly weighted ensembles that are positively coupled.
+:ref:`coupling_fig` shows the scalar value taken across the whole domain by the functions in the original
+ensembles (independent) and the transformed / coupled ensembles (positively correlated).
+
+.. _coupling_fig:
+.. figure::  images/coupling.png
+   :scale: 50 %
+   :align:   center
+
+   Figure 1
