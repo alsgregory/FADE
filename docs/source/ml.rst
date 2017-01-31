@@ -27,7 +27,7 @@ exists on the mesh :math:`M_{l}`. Then the multilevel ETPF estimate to the first
 distribution of the function :math:`f_{L,t_{k}}` on the finest mesh given partial observations of a reference
 function, :math:`Y_{t_{1}},...,Y_{t_{k}}`, be given by
 
-.. math:: \mathbb{E}\left\[f_{L,t_{k}}^{i}|Y_{t_{1}},...,Y_{t_{k}}\right\] \approx \left(\sum_{i=1}^{N_{0}}f_{0,t_{k}}^{i}w_{0,t_{k}}^{i}\right) + \sum_{l=1}^{L}\left(\sum_{i=1}^{N_{l}}f_{l,t_{k}}^{i}w_{l,t_{k}}^{i}-\hat{f}_{l-1,t_{k}}^{i}\hat{w}_{l-1,t_{k}}^{i}\right),
+.. math:: \mathbb{E}\left(f_{L,t_{k}}^{i}|Y_{t_{1}},...,Y_{t_{k}}\right) \approx \left(\sum_{i=1}^{N_{0}}f_{0,t_{k}}^{i}w_{0,t_{k}}^{i}\right) + \sum_{l=1}^{L}\left(\sum_{i=1}^{N_{l}}f_{l,t_{k}}^{i}w_{l,t_{k}}^{i}-\hat{f}_{l-1,t_{k}}^{i}\hat{w}_{l-1,t_{k}}^{i}\right),
 
 where :math:`i` denotes a sample of the function in question. Also note here that the function
 :math:`\hat{f}_{l-1,t_{k}} \sim f_{l-1,t_{k}}` but the samples of it are just independent from

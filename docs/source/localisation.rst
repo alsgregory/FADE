@@ -61,7 +61,7 @@ algorithm. In the example of localising the weight functions, if we set `r_loc =
 value for this argument, then every basis coefficient of the ensemble functions are weighted individually.
 On the other hand, as `r_loc` increases the weights of basis coefficients for nodes of cells are averaged out
 among neighbouring cells allowing eventually for all cells to have the same weight (standard likelihood
-with no localisation). Figures :ref:`r_1_loc` and :ref:`r_2_loc` show a localised DG0 function, with one cell's
+with no localisation). :ref:`r_1_loc` and :ref:`r_2_loc` show a localised DG0 function, with one cell's
 value set to 1 and all the rest zeros, with `r_loc=1` and `r_loc=2` respectively.
 
 .. _r_1_loc:
@@ -69,11 +69,11 @@ value set to 1 and all the rest zeros, with `r_loc=1` and `r_loc=2` respectively
    :scale: 50 %
    :align:   center
 
-   Radius 1 localisation.
+   Figure 1
 
 .. _r_2_loc:
 .. figure::  images/radius_2_localisation.png
    :scale: 50 %
    :align:   center
 
-   Radius 2 localisation.
+   Figure 2
