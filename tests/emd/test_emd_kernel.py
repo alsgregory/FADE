@@ -78,6 +78,37 @@ def test_coarsening_cost_tensor():
     assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - 1)) < 1e-5
 
 
+def test_coarsening_cost_tensor_2():
+
+    mesh = UnitIntervalMesh(1)
+
+    mesh_hierarchy = MeshHierarchy(mesh, 1)
+
+    V = VectorFunctionSpace(mesh_hierarchy[1], 'DG', 0, dim=3)
+
+    ensemble_f = Function(V)
+    ensemble_f.dat.data[0, 0] = 1
+    ensemble_f.dat.data[0, 1] = 2
+    ensemble_f.dat.data[0, 2] = 2
+    ensemble2_f = Function(V)
+    ensemble2_f.dat.data[0, 0] = 1
+    ensemble2_f.dat.data[0, 1] = 3
+    ensemble2_f.dat.data[0, 2] = 3
+
+    # this will aggregate the difference in one finer subcell between the one coarse cell
+    r_loc = 1
+    cost_tensor = generate_localised_cost_tensor(ensemble_f, ensemble2_f, r_loc)
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 0] - 0)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 1] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 2] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 1] - 4)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 0] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 0, 2] - 4)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 0] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 1, 2] - 1)) < 1e-5
+    assert np.max(np.abs(cost_tensor.dat.data[:, 2, 1] - 1)) < 1e-5
+
+
 def test_coarsening_cost_tensor_assembly():
 
     mesh = UnitIntervalMesh(1)
