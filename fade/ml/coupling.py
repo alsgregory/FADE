@@ -153,7 +153,17 @@ def seamless_coupling_update(ensemble_1, ensemble_2, weights_1, weights_2, r_loc
     with timed_stage("Coupling weighted intermediate ensemble and transformed finer ensemble"):
         # inject transformed finer ensemble
         inj_new_ensemble_f_f = Function(vfsc)
-        inject(new_ensemble_f_f, inj_new_ensemble_f_f)
+        inj_f = Function(fsc)
+        f_f = Function(fsf)
+        if n == 1:
+            f_f.dat.data[:] = new_ensemble_f_f.dat.data[:]
+            inject(f_f, inj_f)
+            inj_new_ensemble_f_f.dat.data[:] = inj_f.dat.data[:]
+        else:
+            for i in range(n):
+                f_f.dat.data[:] = new_ensemble_f_f.dat.data[:, i]
+                inject(f_f, inj_f)
+                inj_new_ensemble_f_f.dat.data[:, i] = inj_f.dat.data[:]
 
         kernel_transform(int_ensemble_c_f, inj_new_ensemble_f_f,
                          inj_weights_f, even_weights_c, new_ensemble_c_f, r_loc_c)
