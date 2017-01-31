@@ -87,7 +87,7 @@ and `r_loc_f` for the fine weight localisation.
     weights_fine = weight_update(ensemble_fine, weights_fine,
                                  observation_operator_fine, r_loc_c, r_loc_f)
 
-Here, each level has to have a separate `observation_operator` initialized and used. Then to carry out the ensemble
+Here, each level has to have a separate `observation_operator` initialized and updated. Then to carry out the ensemble
 transform and coupling stage we use the single command:
 
 .. code::

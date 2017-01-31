@@ -1,6 +1,9 @@
 Directory Overview
 =================
 
+Firedrake and Assimilating Data using Ensembles (FADE): A toolbox of ensemble based data-assimilation
+algorithms for use with Firedrake. Code available at: `<http://www.github.com/alsgregory/FADE>`_
+
 The directories of FADE are set-up as below:
 
 - ``/``: The FADE base directory contents include a Makefile (used to run the automated tests and check for linting errors), a LICENSE file and a README.
