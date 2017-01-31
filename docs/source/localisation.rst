@@ -66,14 +66,14 @@ value set to 1 and all the rest zeros, with `r_loc=1` and `r_loc=2` respectively
 
 .. _r_1_loc:
 .. figure::  images/radius_1_localisation.png
-   :scale: 50 %
+   :scale: 75 %
    :align:   center
 
    Figure 1
 
 .. _r_2_loc:
 .. figure::  images/radius_2_localisation.png
-   :scale: 50 %
+   :scale: 75 %
    :align:   center
 
    Figure 2

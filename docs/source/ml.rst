@@ -111,7 +111,7 @@ ensembles (independent) and the transformed / coupled ensembles (positively corr
 
 .. _coupling_fig:
 .. figure::  images/coupling.png
-   :scale: 50 %
+   :scale: 75 %
    :align:   center
 
    Figure 1
