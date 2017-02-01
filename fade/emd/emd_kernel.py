@@ -13,6 +13,8 @@ from firedrake import *
 from fade.localisation import *
 from fade.utils import *
 
+import fade
+
 import numpy as np
 
 import os
@@ -310,13 +312,13 @@ def kernel_transform(ensemble_f, ensemble2_f, weights, weights2, out_func, r_loc
         # update with cost tensor
         Dict.update({"cost_tensor":(cost_tensor, READ)})
 
-    # current working directory
-    p = os.getcwd()
+    # get fade/fade/emd directory
+    p = fade.emd.__path__[0]
 
     # key options for par_loop
-    ldargs=["-L" + p + "/fade/emd", "-Wl,-rpath," + p + "/fade/emd", "-lemd"]
+    ldargs=["-L" + p, "-Wl,-rpath," + p, "-lemd"]
     headers=["#include <emd.h>"]
-    include_dirs=[p + "/fade/emd"]
+    include_dirs=[p]
 
     # carry out par_loop -> out_func gets overwritten
     with timed_stage("Ensemble transform"):
