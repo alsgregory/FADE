@@ -56,7 +56,7 @@ is done via the following command:
 
 .. code::
 
-    observations = Observations(V, R)
+    observation_operator = Observations(V, R)
 
 Using standard importance sampling, one can
 compute normalized importance weight functions :math:`w_{t}^{i} \in V` for each
@@ -87,7 +87,7 @@ the distribution :math:`p(f_{t_{k}}|Y_{t_{1}},...,Y_{t_{k}})`
 .. math:: p(f_{t_{k}}|Y_{t_{1}},...,Y_{t_{k}}) \approx \sum_{i=1}^{N}w_{t_{k}}^{i}\delta(f_{t_{k}} - f_{t_{k}}^{i}).
 
 To compute one step of the sequential importance sampling weight update in FADE, given a list of
-coordinates and a corresponding list of observations, the following commands can be used:
+`coordinates` and a corresponding list of `observations`, the following commands can be used:
 
 .. code::
     
