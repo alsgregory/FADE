@@ -19,7 +19,7 @@ L = 5
 mesh_hierarchy = MeshHierarchy(UnitIntervalMesh(1), L)
 
 # define means of each level's prior normal distribution
-means = (2 ** (-10 * np.linspace(0, L, L + 1))) + 1
+means = (2 ** (-np.linspace(0, L, L + 1))) + 1
 
 # the coordinates of observation (only one cell)
 coords = tuple([np.array([0.5])])
