@@ -1,5 +1,6 @@
-""" demo for the coarse and fine posterior convergence of a single seamless coupling update step on a
-single cell """
+""" Demo showing the convergence of the coarse and fine posterior functions after a seamless coupling update.
+Coarse functions are DG0 functions on interval meshes with a single cell.
+Each function takes a normally distributed scalar value. """
 
 from __future__ import division
 
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plot
 mesh = UnitIntervalMesh(1)
 mesh_hierarchy = MeshHierarchy(mesh, 1)
 
+# define coarse and fine function spaces
 Vc = FunctionSpace(mesh_hierarchy[0], 'DG', 0)
 Vf = FunctionSpace(mesh_hierarchy[1], 'DG', 0)
 
@@ -24,16 +26,18 @@ Vf = FunctionSpace(mesh_hierarchy[1], 'DG', 0)
 coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
 
-sigma = 2.0
+# variance of measurement error
+R = 2.0
 
-observation_operator_c = Observations(Vc, sigma)
-observation_operator_f = Observations(Vf, sigma)
+# initialize coarse and fine observation operators
+observation_operator_c = Observations(Vc, R)
+observation_operator_f = Observations(Vf, R)
 
 # denote the true mean of both the coarse and fine posterior in the single cell
 TrueMean = 0.7
 
 # range of sample sizes
-ns = 4 * (2 ** np.linspace(0, 5, 6))
+ns = 4 * (2 ** np.linspace(0, 4, 5))
 
 # preallocate rmse array
 rmse_c = np.zeros(len(ns))
@@ -49,9 +53,9 @@ def seamless_coupling_step(Vc, Vf, n, oo_c, oo_f, coords, obs):
     weights_c = []
     weights_f = []
     for i in range(n):
-        f = Function(Vc).assign(np.random.normal(1, 1, 1)[0])
+        f = Function(Vc).assign(np.random.normal(1, 1))
         ensemble_c.append(f)
-        g = Function(Vf).assign(np.random.normal(1, 1, 1)[0])
+        g = Function(Vf).assign(np.random.normal(1, 1))
         ensemble_f.append(g)
         hc = Function(Vc).assign(1.0 / n)
         weights_c.append(hc)
@@ -59,12 +63,11 @@ def seamless_coupling_step(Vc, Vf, n, oo_c, oo_f, coords, obs):
         weights_f.append(hf)
 
     # generate coarse and fine posterior
-    r_loc = 0
     oo_c.update_observation_operator(coords, obs)
     oo_f.update_observation_operator(coords, obs)
     weights_c = weight_update(ensemble_c, weights_c, oo_c)
     weights_f = weight_update(ensemble_f, weights_f, oo_f)
-    Xc, Xf = seamless_coupling_update(ensemble_c, ensemble_f, weights_c, weights_f, r_loc, r_loc)
+    Xc, Xf = seamless_coupling_update(ensemble_c, ensemble_f, weights_c, weights_f)
 
     # generate coarse / fine mean at the cell which contains coordinate of observation
     mesh_c = Vc.mesh()
@@ -78,8 +81,10 @@ def seamless_coupling_step(Vc, Vf, n, oo_c, oo_f, coords, obs):
     return Mc, Mf
 
 
-niter = 20
+# define number of iterations for each posterior estimate
+niter = 5
 
+# iterate over ensemble sizes
 for i in range(len(ns)):
 
     temp_mse_c = np.zeros(niter)
@@ -98,6 +103,7 @@ for i in range(len(ns)):
 
     print 'completed n = ', ns[i], ' sample size iteration'
 
+# plot results
 plot.loglog(ns, rmse_c, 'r*-')
 plot.loglog(ns, rmse_f, 'bo-')
 plot.loglog(ns, 8e-1 * ns ** (- 1.0 / 2.0), 'k--')

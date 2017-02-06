@@ -1,4 +1,7 @@
-""" Convergence demo of multilevel monte carlo estimates of posterior statistics using a hierarchy of transformed / coupled ensembles """
+""" Demo showing the convergence (as eps -> 0) of the multilevel Monte Carlo (computed by firedrake-mlmc)
+mean of posterior distribution.
+Coarsest functions are DG0 functions on an interval mesh with a single cell.
+Each function takes a normally distributed scalar value, with given mean for each level. """
 
 from __future__ import division
 
@@ -12,13 +15,11 @@ import numpy as np
 
 
 # define the mesh hierarchy
-L = 2
-mesh_hierarchy = MeshHierarchy(UnitSquareMesh(1, 1), L)
+L = 5
+mesh_hierarchy = MeshHierarchy(UnitIntervalMesh(1), L)
 
-# define each level means
-means = np.ones(L + 1)
-means[0:L - 1] = 2 ** (-np.linspace(0, L - 2, L - 1))
-means[-1] = 0
+# define means of each level's prior normal distribution
+means = (2 ** (-10 * np.linspace(0, L, L + 1))) + 1
 
 # the coordinates of observation (only one cell)
 coords = tuple([np.array([0.5])])
@@ -27,34 +28,38 @@ obs = tuple([0.1])
 # denote the true mean of finest posterior in the single cell
 TrueMean = 0.7
 
-# observation variance
-sigma = 2.0
+# measurement error variance
+R = 2.0
 
 # define the function space hierarchy
 fs_hierarchy = tuple([FunctionSpace(m, 'DG', 0) for m in mesh_hierarchy])
 
 # observation operator hierarchy
-oo_hierarchy = tuple([Observations(fs, sigma) for fs in fs_hierarchy])
+oo_hierarchy = tuple([Observations(fs, R) for fs in fs_hierarchy])
 
 
 # define the function to calculate the multilevel monte carlo estimate of
 # posterior mean
-def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs):
+def mlmc_estimate(eps, fs_hierarchy, means, oo_hierarchy, coords, obs):
 
     eh = EnsembleHierarchy(fs_hierarchy)
-    L = len(fs_hierarchy) - 1
+    L = int(np.ceil((-1 * np.log(eps)) / np.log(2)))
+    if L > len(fs_hierarchy) - 1:
+        print 'eps too low for function space hierarchy'
+    N0 = int(eps ** (-2))
     ns = np.zeros(L)
 
     for i in range(L):
-        n = int(N0 / (2 ** i))
+        n = np.max([2, int(N0 / (2 ** i))])
         ns[i] = n
         coarse = []
         fine = []
         weights_c = []
         weights_f = []
         for k in range(n):
-            xc = np.random.normal(0, 1, 1)[0] + means[i]
-            xf = np.random.normal(0, 1, 1)[0] + means[i + 1]
+            d = np.random.normal(0, 1)
+            xc = d + means[i]
+            xf = d + means[i + 1]
             coarse.append(Function(fs_hierarchy[i]).assign(xc))
             fine.append(Function(fs_hierarchy[i + 1]).assign(xf))
             hc = Function(fs_hierarchy[i]).assign(1.0 / n)
@@ -63,7 +68,6 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs):
             weights_f.append(hf)
 
         # weight calculation
-        r_loc = 0
         oo_hierarchy[i].update_observation_operator(coords, obs)
         oo_hierarchy[i + 1].update_observation_operator(coords, obs)
         weights_c = weight_update(coarse, weights_c, oo_hierarchy[i])
@@ -73,67 +77,53 @@ def mlmc_estimate(N0, fs_hierarchy, means, oo_hierarchy, coords, obs):
         new_coarse, new_fine = seamless_coupling_update(coarse,
                                                         fine,
                                                         weights_c,
-                                                        weights_f,
-                                                        r_loc,
-                                                        r_loc)
+                                                        weights_f)
 
         # put into ensemble
         for k in range(n):
             s = State(new_coarse[k], new_fine[k])
             eh.AppendToEnsemble(s)
 
+    # update statistics using ensemble hierarchy
     eh.UpdateStatistics()
 
-    # find variance
-    ind_mean = eh.MultilevelExpectation.ufl_domain().locate_cell(coords[0])
-    var = 0
-    for i in range(L):
-        ind_var = eh.Variance[i].ufl_domain().locate_cell(coords[0])
-        var += eh.Variance[i].dat.data[ind_var] / ns[i]
-    mean = eh.MultilevelExpectation.dat.data[ind_mean]
+    # find rmse at coordinate of mesh in which observation is taken in
+    index = eh.MultilevelExpectation.ufl_domain().locate_cell(coords[0])
+    mean = eh.MultilevelExpectation.dat.data[index]
 
-    return mean, var
+    return mean, ns, L
 
 
-# run the convergence loops with increasing n
+# define epsilon values
+epsl = np.array([8e-1, 4e-1, 2e-1, 1e-1])
 
-s = 5
-niter = 5
+# define number of epsilon values and number of iterations for each posterior estimate
+num_eps = len(epsl)
+niter = 2
 
-N0s = (4 * (2 ** np.linspace(0, s - 1, s))).astype(int)
+rmse_func = np.zeros(num_eps)
 
-rmse_func = np.zeros(s)
-var_func = np.zeros(s)
-
-for i in range(s):
+# iterate over epsilon values
+for i in range(num_eps):
 
     temp_rmse_func = np.zeros(niter)
-    temp_var_func = np.zeros(niter)
 
     for j in range(niter):
 
-        m_func, v_func = mlmc_estimate(N0s[i], fs_hierarchy, means,
-                                       oo_hierarchy, coords, obs)
+        m_func, ns, L = mlmc_estimate(epsl[i], fs_hierarchy, means,
+                                      oo_hierarchy, coords, obs)
 
-        temp_rmse_func[j] = np.square(m_func)
-
-        temp_var_func[j] = v_func
+        temp_rmse_func[j] = np.square(m_func - TrueMean)
 
     rmse_func[i] = np.sqrt(np.mean(temp_rmse_func))
 
-    var_func[i] = np.mean(temp_var_func)
-
-    print 'done sample size: ', N0s[i]
+    print 'completed estimate with L =', L, ' and Nl =', ns
 
 # plot results
-
-plot.loglog(N0s, rmse_func, 'r*-')
-plot.loglog(N0s, var_func, 'r*--')
-
-plot.loglog(N0s, 1e1 * N0s.astype(float) ** (-1), 'k--')
-plot.loglog(N0s, 1e1 * N0s.astype(float) ** (-0.5), 'k-')
-
-plot.legend(['rmse (function)', 'variance (function)', 'linear decay',
+plot.loglog(epsl, rmse_func, 'r*-')
+plot.loglog(epsl, 1e1 * epsl.astype(float) ** (1), 'k--')
+plot.legend(['rmse (function)', 'linear decay',
              'sqrt decay'])
-
+plot.xlabel('epsilon')
+plot.ylabel('RMSE')
 plot.show()

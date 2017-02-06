@@ -1,4 +1,6 @@
-""" demo for the posterior convergence of a single ensemble transform update step on a single cell """
+""" Demo showing the convergence of posterior functions after an ensemble transform update.
+Functions are DG0 functions on an interval mesh with a single cell.
+Each function takes a normally distributed scalar value. """
 
 from __future__ import division
 
@@ -11,9 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plot
 
 
-# generate a mesh from a mesh hierarchy
-mesh_hierarchy = MeshHierarchy(UnitIntervalMesh(1), 0)
-mesh = mesh_hierarchy[-1]
+# generate a mesh
+mesh = UnitIntervalMesh(1)
 
 # generate function space
 V = FunctionSpace(mesh, 'DG', 0)
@@ -22,15 +23,17 @@ V = FunctionSpace(mesh, 'DG', 0)
 coords = tuple([np.array([0.5])])
 obs = tuple([0.1])
 
-sigma = 2.0
+# measurement error variance
+R = 2.0
 
-observation_operator = Observations(V, sigma)
+# initialize observation operator
+observation_operator = Observations(V, R)
 
 # denote the true mean of the posterior
 TrueMean = 0.7
 
 # range of sample sizes
-ns = 4 * (2 ** np.linspace(0, 5, 6))
+ns = 4 * (2 ** np.linspace(0, 4, 5))
 
 # preallocate rmse array
 rmse = np.zeros(len(ns))
@@ -43,26 +46,28 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs):
     ensemble = []
     weights = []
     for i in range(n):
-        f = Function(V).assign(np.random.normal(1, 1, 1)[0])
+        f = Function(V).assign(np.random.normal(1, 1))
         g = Function(V).assign(1.0 / n)
         ensemble.append(f)
         weights.append(g)
 
     # generate posterior
-    r_loc = 0
     observation_operator.update_observation_operator(coords, obs)
     weights = weight_update(ensemble, weights, observation_operator)
-    X = ensemble_transform_update(ensemble, weights, r_loc)
+    X = ensemble_transform_update(ensemble, weights)
 
-    # generate mean
+    # generate mean at cell containing coordinate
     M = 0
+    index = X[i].ufl_domain().locate_cell(coords[0])
     for i in range(n):
-        M += (1 / float(n)) * X[i].dat.data[0]
+        M += (1 / float(n)) * X[i].dat.data[index]
     return M
 
 
-niter = 10
+# define number of iterations for each posterior estimate
+niter = 5
 
+# iterate over ensemble sizes
 for i in range(len(ns)):
 
     temp_mse = np.zeros(niter)
@@ -77,6 +82,7 @@ for i in range(len(ns)):
 
     print 'completed n = ', ns[i], ' sample size iteration'
 
+# plot results
 plot.loglog(ns, rmse, 'r*-')
 plot.loglog(ns, 8e-1 * ns ** (- 1.0 / 2.0), 'k--')
 plot.legend(['rmse', 'sqrt decay'])
