@@ -1,5 +1,6 @@
-""" demo for sequential importance sampling on an ensemble of functions with single cell - scalar
-OU process """
+""" Demo showing sequential importance sampling within fade.
+Ensemble and reference functions are DG0 functions on a 1D mesh with one cell.
+The cell values represent a scalar OU process. """
 
 from __future__ import division
 
@@ -12,9 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plot
 
 
-# generate a mesh with a single cell from a mesh hierarchy
-mesh_hierarchy = MeshHierarchy(UnitIntervalMesh(1), 0)
-mesh = mesh_hierarchy[-1]
+# generate a mesh
+mesh = UnitIntervalMesh(1)
 
 # generate function space
 V = FunctionSpace(mesh, 'DG', 0)
