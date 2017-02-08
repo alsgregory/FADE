@@ -10,3 +10,4 @@ Contents:
    ensemble_da
    localisation
    ml
+   tutorials

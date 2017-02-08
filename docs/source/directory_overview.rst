@@ -1,3 +1,5 @@
+.. _directory_overview:
+
 Directory Overview
 =================
 
