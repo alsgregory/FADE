@@ -264,3 +264,11 @@ to even weights. The error between the two ensemble means should be 0:
     
     print 'error between ensemble and transformed ensemble means: '
     print norm(assemble(new_ensemble_mean - ensemble_mean))
+
+
+Tutorial: Multilevel Ensemble Transform Particle Filtering
+----------------------------------------------------------
+
+This is a demonstration of how to use FADE, alongside `Firedrake-mlmc <https://github.com/firedrakeproject/firedrake-mlmc>`_, to construct a multilevel filtering :ref:`estimator`
+of a discretized field given partial observations of a reference function.
+This tutorial follows one of the examples in the directory `examples/ml`.
