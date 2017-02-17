@@ -1,5 +1,8 @@
-""" multidimensional rank histogram for an ensemble of Firedrake functions given observation
-operator """
+""" Multidimensional Rank Histogram for an ensemble of Firedrake functions given observation
+operator.
+This is a technique from T. Gneiting, L. I. Stanberry, E. P. Grimit, L. Held and N. A. Johnson.
+Assessing probabilistic forecasts of multivariate quantities, with an application to ensemble
+predictions of surface winds. Test, 2008. """
 
 from __future__ import division
 
@@ -18,9 +21,9 @@ class rank_histogram(object):
 
     def __init__(self, function_space, N):
 
-        """ Can compute the multidimensional rank histogram of an ensemble of Firedrake functions
+        """ Can compute the Multidimensional Rank Histogram of an ensemble of Firedrake functions
             using observations given by coordinates. NB: All ensemble members must stay same
-            inde in the ensemble with all observations. Cannot do this between resampling /
+            in the ensemble during all observations. Cannot do this between resampling /
             transform assimilation steps.
 
             :arg function_space: The :class:`FunctionSpace` of the ensemble :class:`Function`s
