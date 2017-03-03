@@ -48,38 +48,37 @@ def weight_update(ensemble, weights, observation_operator, r_loc=0):
 
     # difference in the observation space
     p = 2
-    D = []
     for i in range(n):
 
         with timed_stage("Calculating observation squared differences"):
-            weights[i].dat.data[:] = np.log(weights[i].dat.data[:])
-            weights[i].assign((-(1 / (2 * observation_operator.R)) *
-                               observation_operator.difference(ensemble[i], p)) + weights[i])
+            Diff = observation_operator.difference(ensemble[i], p)
 
-        D.append(weights[i])
+        # also implement coarsening localisation and find weights
+        with timed_stage("Coarsening localisation"):
+            Diff = CoarseningLocalisation(Diff, r_loc)
 
-    # now implement coarsening localisation and find weights
-    with timed_stage("Coarsening localisation"):
-        W = CoarseningLocalisation(D, r_loc)
+        weights[i].dat.data[:] = np.log(weights[i].dat.data[:])
+        weights[i].assign((-(1 / (2 * observation_operator.R)) *
+                          Diff) + weights[i])
 
     # Find Gaussian likelihood
     with timed_stage("Likelihood calculation"):
         for j in range(n):
-            W[j].dat.data[:] = ((1 / np.sqrt(2 * np.pi * observation_operator.R)) *
-                                np.exp(W[j].dat.data[:]))
+            weights[j].dat.data[:] = ((1 / np.sqrt(2 * np.pi * observation_operator.R)) *
+                                      np.exp(weights[j].dat.data[:]))
 
     # normalize and check weights
     t = Function(fs)
     c = Function(fs)
     for j in range(n):
-        t.dat.data[:] += W[j].dat.data[:]
+        t.dat.data[:] += weights[j].dat.data[:]
 
     with timed_stage("Checking weights are normalized"):
         for k in range(n):
-            W[k].dat.data[:] = np.divide(W[k].dat.data[:], t.dat.data[:])
-            c.dat.data[:] += W[k].dat.data[:]
+            weights[k].dat.data[:] = np.divide(weights[k].dat.data[:], t.dat.data[:])
+            c.dat.data[:] += weights[k].dat.data[:]
 
         if np.max(np.abs(c.dat.data[:] - 1)) > 1e-3:
             raise ValueError('Weights dont add up to 1')
 
-    return W
+    return weights
