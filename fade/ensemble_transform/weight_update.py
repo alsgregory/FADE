@@ -51,16 +51,15 @@ def weight_update(ensemble, weights, observation_operator, r_loc=0):
     for i in range(n):
 
         with timed_stage("Calculating observation squared differences"):
-
             Diff = observation_operator.difference(ensemble[i], p)
 
-            # also implement coarsening localisation and find weights
-            with timed_stage("Coarsening localisation"):
-                Diff = CoarseningLocalisation(Diff, r_loc)
+        # also implement coarsening localisation and find weights
+        with timed_stage("Coarsening localisation"):
+            Diff = CoarseningLocalisation(Diff, r_loc)
 
-            weights[i].dat.data[:] = np.log(weights[i].dat.data[:])
-            weights[i].assign((-(1 / (2 * observation_operator.R)) *
-                               Diff) + weights[i])
+        weights[i].dat.data[:] = np.log(weights[i].dat.data[:])
+        weights[i].assign((-(1 / (2 * observation_operator.R)) *
+                          Diff) + weights[i])
 
     # Find Gaussian likelihood
     with timed_stage("Likelihood calculation"):
