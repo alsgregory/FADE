@@ -149,10 +149,13 @@ class rank_histogram(object):
         # uniform pick of intermediate rank
         self.ranks.append(self.__choose_uniform_rank(s_start, s_end) / (self.N + 1))
 
-    def plot_histogram(self):
+    def plot_histogram(self, number_of_bins=None):
 
         # define bins
-        bins = np.linspace(0, 1, self.N + 2)
+        if number_of_bins is None:
+            bins = np.linspace(0, 1, self.N)
+        else:
+            bins = np.linspace(0, 1, number_of_bins)
 
         # plot histogram
         n, bins, patches = plot.hist(self.ranks, bins=bins, normed=1,
