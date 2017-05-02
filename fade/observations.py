@@ -47,16 +47,11 @@ class Observations(object):
         self.observations = None
 
         # projection operators
-        self.in_func = Function(self.cell_fs)
-        self.func = Function(self.fs)
-        self.in_Project = Projector(self.func, self.in_func)
-
         self.cell_differences = Function(self.cell_fs)
         self.out_func = Function(self.fs)
         self.out_Project = Projector(self.cell_differences, self.out_func)
 
-        self.observation_function = Function(self.cell_fs)
-        self.observation_function_diff = Function(self.cell_fs)
+        self.observation_indices = tuple([[] for i in range(len(self.cell_differences.dat.data))])
 
         super(Observations, self).__init__()
 
@@ -75,7 +70,7 @@ class Observations(object):
 
         # update observations and coordinates
         self.observation_coords = observation_coords
-        self.observations = observations
+        self.observations = np.array(observations)
 
         # find cells of mesh that contain observation
         self.cells = PointToCell(self.observation_coords, self.mesh)
@@ -86,25 +81,17 @@ class Observations(object):
         # for each node, aggregate observations over cells
         ny = len(self.observations)
 
-        # reset observation function
-        self.observation_function.assign(0)
+        # reset observation indices
+        self.observation_indices = tuple([[] for i in range(len(self.cell_differences.dat.data))])
 
-        norm_const = np.zeros(len(self.observation_function.dat.data))
-        self.obs_num = np.ones(len(self.observation_function.dat.data))
+        self.obs_num = np.zeros(len(self.cell_differences.dat.data))
 
         for i in range(ny):
             ind = self.nodes[i].astype(int)
-            self.observation_function.dat.data[ind] += self.observations[i]
-
-            # normalization constant
-            norm_const[ind] += 1.0
+            self.observation_indices[ind].append(int(i))
 
             # state that that cell had an observation
-            self.obs_num[ind] = 0.0
-
-        norm_const = np.maximum(norm_const, np.ones(len(self.observation_function.dat.data)))
-        self.observation_function.dat.data[:] = np.divide(self.observation_function.dat.data[:],
-                                                          norm_const)
+            self.obs_num[ind] = 1
 
     def difference(self, func, p=2):
 
@@ -132,20 +119,17 @@ class Observations(object):
             raise ValueError("Function space of func is not same as one for observation operator " +
                              "initialization")
 
-        # project func to DG0 using project and previously initialized in-function
-        self.func.assign(func)
-        self.in_Project.project()
+        # find ensemble function at coordinates
+        self.func_eval = np.array(func.at(self.observation_coords))
 
-        self.observation_function_diff.assign(0)
+        self.cell_differences.assign(0)
 
         # either observation difference or just the actual function
-        self.observation_function_diff.dat.data[:] = (np.multiply(self.in_func.dat.data[:],
-                                                                  self.obs_num) +
-                                                      self.observation_function.dat.data[:])
-
-        # next, find the squared distance between the function and aggregated observations
-        self.cell_differences.assign(assemble((self.observation_function_diff -
-                                               self.in_func) ** p))
+        obs_detected = np.where(self.obs_num == 1)[0]
+        for i in range(int(np.sum(self.obs_num))):
+            O = np.array(self.observation_indices[obs_detected[i]])
+            self.cell_differences.dat.data[obs_detected[i]] = np.sum(np.power(self.observations[O] -
+                                                                              self.func_eval[O], p))
 
         # project back to function space of ensemble
         self.out_Project.project()

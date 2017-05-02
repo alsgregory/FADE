@@ -78,24 +78,6 @@ def test_observation_cells_and_nodes():
     assert np.unique(obs_operator.nodes == np.array([0]))
 
 
-def test_observation_average():
-
-    mesh = UnitIntervalMesh(2)
-    fs = FunctionSpace(mesh, 'DG', 0)
-
-    coord = tuple([np.array([0.75]), np.array([0.75])])
-
-    obs = tuple([2.0, 3.0])
-
-    R = 0.05
-
-    obs_operator = Observations(fs, R)
-
-    obs_operator.update_observation_operator(coord, obs)
-
-    assert obs_operator.observation_function.dat.data[mesh.locate_cell(coord[0])] == 2.5
-
-
 def test_observation_difference():
 
     mesh = UnitSquareMesh(10, 10)
