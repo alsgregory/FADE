@@ -48,16 +48,7 @@ time_rloc_1 = np.zeros(len(ns))
 
 
 # define the ensemble transform update step
-def ensemble_transform_step(V, n, observation_operator, coords, obs, r_loc):
-
-    # generate ensemble
-    ensemble = []
-    weights = []
-    for i in range(n):
-        f = Function(V).assign(np.random.normal(1, 1))
-        g = Function(V).assign(1.0 / n)
-        ensemble.append(f)
-        weights.append(g)
+def ensemble_transform_step(V, ensemble, weights, observation_operator, coords, obs, r_loc):
 
     # generate posterior
     observation_operator.update_observation_operator(coords, obs)
@@ -68,12 +59,30 @@ def ensemble_transform_step(V, n, observation_operator, coords, obs, r_loc):
 # iterate over ensemble sizes
 for i in range(len(ns)):
 
+    # generate ensemble
+    ensemble = []
+    weights = []
+    for j in range(int(ns[i])):
+        f = Function(V).assign(np.random.normal(1, 1))
+        g = Function(V).assign(1.0 / ns[i])
+        ensemble.append(f)
+        weights.append(g)
+
     a0 = time.time()
-    ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs, 0)
+    ensemble_transform_step(V, ensemble, weights, observation_operator, coords, obs, 0)
     b0 = time.time()
 
+    # generate ensemble
+    ensemble = []
+    weights = []
+    for j in range(int(ns[i])):
+        f = Function(V).assign(np.random.normal(1, 1))
+        g = Function(V).assign(1.0 / ns[i])
+        ensemble.append(f)
+        weights.append(g)
+
     a1 = time.time()
-    ensemble_transform_step(V, int(ns[i]), observation_operator, coords, obs, 1)
+    ensemble_transform_step(V, ensemble, weights, observation_operator, coords, obs, 1)
     b1 = time.time()
 
     time_rloc_0[i] = b0 - a0

@@ -121,7 +121,7 @@ for i in range(num_eps):
 
 # plot results
 plot.loglog(epsl, rmse_func, 'r*-')
-plot.loglog(epsl, 1e1 * epsl.astype(float) ** (1), 'k--')
+plot.loglog(epsl, 1e0 * epsl.astype(float) ** (1), 'k--')
 plot.legend(['rmse (function)', 'linear decay',
              'sqrt decay'])
 plot.xlabel('epsilon')

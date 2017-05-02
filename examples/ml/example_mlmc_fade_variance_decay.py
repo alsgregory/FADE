@@ -15,7 +15,7 @@ import matplotlib.pyplot as plot
 
 # create the mesh hierarchy
 mesh = UnitIntervalMesh(1)
-L = 4
+L = 3
 mesh_hierarchy = MeshHierarchy(mesh, L)
 
 # generate function space hierarchy
@@ -28,11 +28,9 @@ coords = []
 obs = []
 x = SpatialCoordinate(mesh_hierarchy[-1])
 ref = Function(fs_hierarchy[-1]).interpolate(sin((x[0] + np.random.normal(0, 1)) * 2 * pi))
-ref_perturbed = Function(fs_hierarchy[-1])
-ref_perturbed.dat.data[:] = (ref.dat.data[:] + np.random.normal(0, 1, len(ref.dat.data)) * np.sqrt(R))
 for i in range(ny):
     coords.append(np.random.uniform(0, 1, 1))
-    obs.append(ref_perturbed.at(coords[i][0]))
+    obs.append(ref.at(coords[i][0]) + np.random.normal(0, np.sqrt(R)))
 
 coords = tuple(coords)
 obs = tuple(obs)
@@ -123,8 +121,8 @@ degs = 4 * (2 ** np.linspace(0, len(mesh_hierarchy) - 2, len(mesh_hierarchy) - 1
 
 # plot results
 plot.loglog(degs, var, 'r*-')
-plot.loglog(degs, 8e-2 * degs ** (- 1.0 / 2.0), 'k--')
-plot.legend(['variance decay', 'sqrt decay'])
+plot.loglog(degs, 8e-2 * degs ** (-1), 'k--')
+plot.legend(['variance decay', 'linear decay'])
 plot.xlabel('degrees of freedom of finest mesh in pair')
 plot.ylabel('sample variance of fine - coarse')
 plot.show()

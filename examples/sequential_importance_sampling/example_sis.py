@@ -41,7 +41,7 @@ R = 2e-1
 observation_operator = Observations(V, R)
 
 # define the number of assimilation steps and time-intervals of assimilation
-ny = 50
+ny = 5
 delta_t = 1
 
 # define OU process parameters
@@ -69,10 +69,11 @@ for k in range(nt):
         references.append(f)
 
         # take observations (these have to be inside lists for each assimilation step)
-        obs.dat.data[:] = (ref.dat.data[:] +
-                           np.random.normal(0, np.sqrt(R), len(ref.dat.data[:])))
-        coordinates.append([np.array([np.random.uniform(0, 1)])])
-        observations.append([obs.at(coordinates[c])])
+        coordinates.append([])
+        observations.append([])
+        for j in range(ny):
+            coordinates[c].append(np.random.uniform(0, 1))
+            observations[c].append(ref.at(coordinates[c][j]) + np.random.normal(0, np.sqrt(R)))
 
         c += 1
 
