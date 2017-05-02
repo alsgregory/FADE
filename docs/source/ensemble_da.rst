@@ -39,17 +39,13 @@ that one knows to be the truth,
 .. math:: r_{t}(x) = \sum_{l=1}N_{l}(x)\xi_{l}.
 
 where :math:`N_{l}(x)` are the standard basis functions of :math:`V`. Observations
-are taken from it via
+are taken from it via evaluating the reference function at coordinates :math:`x^{j}`,
+:math:`j=1,...,n_{y}`, and perturbing them,
 
-.. math:: y^{j}_{t} = r_{t}^{per}(x^{j}),
+.. math:: y^{j}_{t} = r_{t}(x^{j}) + \phi_{j},
 
-with :math:`r_{t}^{per}` given by perturbing the basis coefficients by a random variable,
-
-.. math:: r_{t}^{per}(x) = \sum_{l=1}N_{l}(x)(\xi_{l} + \phi_{l}),
-
-:math:`j=1,...,n_{y}`, where :math:`\phi_{l} \sim N(0, R)` and :math:`x^{j}` are
-coordinates that the reference function is evaluated at. Note: this does mean that all basis
-coefficients are assumed to have independent measurement error in the reference function.
+where :math:`\phi_{j} \sim N(0, R)`. Note: this does mean that all observations
+are assumed to have independent measurement error.
 Denote the list of observations at time :math:`t` to be :math:`Y_{t}`. In FADE, one needs to initialize an
 object that carries out the projection of observations into ensemble space to compute likelihoods. This
 is done via the following command:

@@ -80,18 +80,13 @@ as lists or tuples. First let's generate a reference function.
     ref = Function(V).assign(np.random.normal(0, 1))
 
 For the benefit of this tutorial, each observation will be taken at a random
-coordinate in the domain. The basis coefficients of the reference function will be
-perturbed by some normally distributed measurement error
-with variance `R` and observations will be taken from this new function.
-There will be `ny` observations.
+coordinate in the domain. The reference function will be evaluated at these
+coordinates and perturbed by some normally distributed measurement error
+with variance `R`. There will be `ny` observations.
 
 .. code::
     
     R = 0.005
-    
-    ref_per = Function(V)
-    ref_per.dat.data[:] = ref.dat.data[:] + np.random.normal(0, np.sqrt(R),
-                                                             len(ref.dat.data))
     
     ny = 50
     coords = []
@@ -99,7 +94,7 @@ There will be `ny` observations.
     for i in range(ny):
         coords.append(np.array([np.random.uniform(0, 1),
                                 np.random.uniform(0, 1)]))
-        obs.append(ref_per.at(coords[i]))
+        obs.append(ref.at(coords[i]) + np.random.normal(0, np.sqrt(R)))
 
 Observations need to be put into an object that represents an observation
 operator. This allows observations to be projected on to ensemble space.
