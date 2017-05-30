@@ -64,8 +64,8 @@ def weight_update(ensemble, weights, observation_operator, r_loc=0):
     # Find Gaussian likelihood
     with timed_stage("Likelihood calculation"):
         for j in range(n):
-            weights[j].dat.data[:] = ((1 / np.sqrt(2 * np.pi * observation_operator.R)) *
-                                      np.exp(weights[j].dat.data[:]))
+            weights[j].dat.data[:] = np.fmax(((1.0 / np.sqrt(2 * np.pi * observation_operator.R)) *
+                                              np.exp(weights[j].dat.data[:])), 1e-16)
 
     # normalize and check weights
     t = Function(fs)

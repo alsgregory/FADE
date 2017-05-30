@@ -134,4 +134,7 @@ class Observations(object):
         # project back to function space of ensemble
         self.out_Project.project()
 
+        # truncate projection at 0 - hack!
+        self.out_func.dat.data[:] = np.fmax(self.out_func.dat.data[:], 0)
+
         return self.out_func
